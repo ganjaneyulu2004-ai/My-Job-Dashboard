@@ -1,0 +1,585 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import confetti from 'canvas-confetti';
+import {
+  Client,
+  Task,
+  WorkLog,
+  GmbSeoEntry,
+  Keyword,
+  Goal,
+  RecurringTaskTemplate,
+  TabType,
+  TagFilter,
+  TaskStatus,
+  WorkType,
+  GmbSeoType
+} from '../types';
+import {
+  INITIAL_CLIENTS,
+  INITIAL_TASKS,
+  INITIAL_WORK_LOGS,
+  INITIAL_GMB_SEO_ENTRIES,
+  INITIAL_KEYWORDS,
+  INITIAL_GOALS,
+  INITIAL_RECURRING_TASKS,
+  INITIAL_INSTAGRAM_ACCOUNTS
+} from '../data/seedData';
+import { InstagramAccount, InstagramConnection } from '../types';
+
+interface SupabaseConfig {
+  url: string;
+  key: string;
+  connected: boolean;
+}
+
+interface AppContextType {
+  clients: Client[];
+  activeClientId: string; // 'all' or client.id
+  setActiveClientId: (id: string) => void;
+  activeClient: Client | undefined;
+  
+  activeTab: TabType;
+  setActiveTab: (tab: TabType) => void;
+
+  tasks: Task[];
+  workLogs: WorkLog[];
+  gmbSeoEntries: GmbSeoEntry[];
+  keywords: Keyword[];
+  goals: Goal[];
+  recurringTasks: RecurringTaskTemplate[];
+  instagramAccounts: InstagramAccount[];
+  instagramConnections: Record<string, InstagramConnection>;
+
+  filters: TagFilter;
+  setFilters: React.Dispatch<React.SetStateAction<TagFilter>>;
+  isFilterOpen: boolean;
+  setIsFilterOpen: (open: boolean) => void;
+
+  subashGlobalPhone: string;
+  setSubashGlobalPhone: (phone: string) => void;
+
+  reportSentAtToday: string | null;
+  markReportSentToday: () => void;
+
+  supabaseConfig: SupabaseConfig;
+  setSupabaseConfig: React.Dispatch<React.SetStateAction<SupabaseConfig>>;
+
+  // Actions
+  addClient: (client: Omit<Client, 'id' | 'created_at'>) => void;
+  addTask: (task: Omit<Task, 'id' | 'status'>) => void;
+  toggleTaskStatus: (taskId: string) => void;
+  deleteTask: (taskId: string) => void;
+  toggleTaskReminder: (taskId: string) => void;
+  
+  addWorkLogNote: (clientId: string, note: string) => void;
+  
+  addGmbSeoEntry: (entry: Omit<GmbSeoEntry, 'id' | 'next_check_date'>) => void;
+  updateGmbSeoEntryMetrics: (entryId: string, searchPos: number, mapsPos: number, views: number, clicks: number) => void;
+  
+  addKeyword: (clientId: string, keyword: string, currentPos: number, targetPos: number, searchVolume?: string) => void;
+  updateKeywordPosition: (keywordId: string, newPosition: number) => void;
+  deleteKeyword: (keywordId: string) => void;
+
+  addGoal: (goal: Omit<Goal, 'id' | 'status'>) => void;
+  updateGoalProgress: (goalId: string, currentValue: number) => void;
+
+  addRecurringTask: (rec: Omit<RecurringTaskTemplate, 'id' | 'active'>) => void;
+  toggleRecurringTask: (recId: string) => void;
+  toggleInstagramConnect: (clientId: string) => void;
+  saveInstagramConnection: (clientId: string, accountId: string, accessToken: string) => void;
+  disconnectInstagramConnection: (clientId: string) => void;
+
+  triggerConfetti: () => void;
+  resetToSeedData: () => void;
+}
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+const LOCAL_STORAGE_KEY = 'agencyops_data_v1';
+
+function getInitialData<T>(key: string, fallback: T): T {
+  try {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_${key}`);
+    if (!saved) return fallback;
+    const parsed = JSON.parse(saved);
+    if (Array.isArray(fallback) && (!Array.isArray(parsed) || parsed.length === 0)) return fallback;
+    return parsed ?? fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Initialize state safely from LocalStorage or Seed Data
+  const [supabaseConfig, setSupabaseConfig] = useState<SupabaseConfig>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_supabase`);
+    return saved ? JSON.parse(saved) : { url: '', key: '', connected: false };
+  });
+
+  const [clients, setClients] = useState<Client[]>(() => getInitialData('clients', INITIAL_CLIENTS));
+  const [activeClientId, setActiveClientId] = useState<string>('client-1');
+  const [activeTab, setActiveTab] = useState<TabType>('today');
+
+  const [tasks, setTasks] = useState<Task[]>(() => getInitialData('tasks', INITIAL_TASKS));
+  const [workLogs, setWorkLogs] = useState<WorkLog[]>(() => getInitialData('workLogs', INITIAL_WORK_LOGS));
+  const [gmbSeoEntries, setGmbSeoEntries] = useState<GmbSeoEntry[]>(() => getInitialData('gmbSeoEntries', INITIAL_GMB_SEO_ENTRIES));
+  const [keywords, setKeywords] = useState<Keyword[]>(() => getInitialData('keywords', INITIAL_KEYWORDS));
+  const [goals, setGoals] = useState<Goal[]>(() => getInitialData('goals', INITIAL_GOALS));
+  const [recurringTasks, setRecurringTasks] = useState<RecurringTaskTemplate[]>(() => getInitialData('recurringTasks', INITIAL_RECURRING_TASKS));
+  const [instagramAccounts, setInstagramAccounts] = useState<InstagramAccount[]>(() => getInitialData('instagramAccounts', INITIAL_INSTAGRAM_ACCOUNTS));
+  const [instagramConnections, setInstagramConnections] = useState<Record<string, InstagramConnection>>(() => {
+    const raw = getInitialData<Record<string, InstagramConnection>>('instagramConnections', {});
+    // Audit data: ensure client_id matches the map key and remove any misaligned placeholder IDs (e.g. Raos ID on SmileCare)
+    const audited: Record<string, InstagramConnection> = {};
+    Object.entries(raw).forEach(([clientId, conn]) => {
+      if (conn && conn.client_id === clientId && conn.is_connected && conn.ig_business_account_id) {
+        // If SmileCare Dental Clinic (client-1) was wrongly assigned Raos ID (17841461175736178), clear it
+        if (clientId === 'client-1' && conn.ig_business_account_id === '17841461175736178') {
+          return;
+        }
+        audited[clientId] = conn;
+      }
+    });
+    return audited;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_instagramConnections`, JSON.stringify(instagramConnections));
+  }, [instagramConnections]);
+
+  // Load instagram_connections from Supabase DB table on mount/config change
+  useEffect(() => {
+    if (supabaseConfig.url && supabaseConfig.key) {
+      const restUrl = `${supabaseConfig.url.replace(/\/$/, '')}/rest/v1/instagram_connections?select=*`;
+      fetch(restUrl, {
+        headers: {
+          'apikey': supabaseConfig.key,
+          'Authorization': `Bearer ${supabaseConfig.key}`
+        }
+      })
+      .then(res => res.ok ? res.json() : null)
+      .then(rows => {
+        if (Array.isArray(rows) && rows.length > 0) {
+          const dbMap: Record<string, InstagramConnection> = {};
+          rows.forEach((row: any) => {
+            if (row.client_id && row.ig_business_account_id) {
+              dbMap[row.client_id] = {
+                client_id: row.client_id,
+                ig_business_account_id: row.ig_business_account_id,
+                is_connected: Boolean(row.is_connected),
+                connected_at: row.connected_at,
+                access_token_masked: row.access_token_masked || '••••••••'
+              };
+            }
+          });
+          setInstagramConnections(prev => ({ ...prev, ...dbMap }));
+        }
+      })
+      .catch(() => {});
+    }
+  }, [supabaseConfig.url, supabaseConfig.key]);
+
+  const saveInstagramConnection = (clientId: string, accountId: string, accessToken: string) => {
+    const masked = accessToken.length > 8 ? `${accessToken.slice(0, 4)}...${accessToken.slice(-4)}` : '••••••••';
+    const connData: InstagramConnection = {
+      client_id: clientId,
+      ig_business_account_id: accountId,
+      is_connected: true,
+      connected_at: new Date().toISOString(),
+      access_token_masked: masked,
+      access_token: accessToken
+    };
+
+    setInstagramConnections(prev => ({
+      ...prev,
+      [clientId]: connData
+    }));
+
+    // Persist to Supabase database table `instagram_connections`
+    if (supabaseConfig.url && supabaseConfig.key) {
+      const restUrl = `${supabaseConfig.url.replace(/\/$/, '')}/rest/v1/instagram_connections`;
+      fetch(restUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseConfig.key,
+          'Authorization': `Bearer ${supabaseConfig.key}`,
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify({
+          client_id: clientId,
+          ig_business_account_id: accountId,
+          is_connected: true,
+          connected_at: connData.connected_at,
+          access_token_masked: masked
+        })
+      }).catch(err => console.warn('Supabase instagram_connections table sync notice:', err));
+    }
+  };
+
+  const disconnectInstagramConnection = (clientId: string) => {
+    setInstagramConnections(prev => {
+      const copy = { ...prev };
+      delete copy[clientId];
+      return copy;
+    });
+
+    if (supabaseConfig.url && supabaseConfig.key) {
+      const restUrl = `${supabaseConfig.url.replace(/\/$/, '')}/rest/v1/instagram_connections?client_id=eq.${clientId}`;
+      fetch(restUrl, {
+        method: 'DELETE',
+        headers: {
+          'apikey': supabaseConfig.key,
+          'Authorization': `Bearer ${supabaseConfig.key}`
+        }
+      }).catch(err => console.warn('Supabase instagram_connections table delete notice:', err));
+    }
+  };
+
+  const toggleInstagramConnect = (clientId: string) => {
+    setInstagramAccounts(prev => prev.map(a => {
+      if (a.client_id === clientId) {
+        return { ...a, connected: !a.connected };
+      }
+      return a;
+    }));
+  };
+
+  const [filters, setFilters] = useState<TagFilter>({
+    selectedTag: undefined,
+    selectedStatus: 'all',
+    selectedWorkType: 'all',
+    searchQuery: '',
+  });
+
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const [reportSentAtToday, setReportSentAtToday] = useState<string | null>(() => {
+    return localStorage.getItem(`${LOCAL_STORAGE_KEY}_report_sent_${todayStr}`);
+  });
+
+  const markReportSentToday = () => {
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setReportSentAtToday(timeStr);
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_report_sent_${todayStr}`, timeStr);
+  };
+
+  const [subashGlobalPhone, setSubashGlobalPhone] = useState<string>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_subashPhone`);
+    return saved || '+19876543210';
+  });
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_subashPhone`, subashGlobalPhone);
+  }, [subashGlobalPhone]);
+
+  // LocalStorage sync effects
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_clients`, JSON.stringify(clients));
+  }, [clients]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_tasks`, JSON.stringify(tasks));
+  }, [tasks]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_workLogs`, JSON.stringify(workLogs));
+  }, [workLogs]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_gmbSeoEntries`, JSON.stringify(gmbSeoEntries));
+  }, [gmbSeoEntries]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_keywords`, JSON.stringify(keywords));
+  }, [keywords]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_goals`, JSON.stringify(goals));
+  }, [goals]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_recurringTasks`, JSON.stringify(recurringTasks));
+  }, [recurringTasks]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_instagramAccounts`, JSON.stringify(instagramAccounts));
+  }, [instagramAccounts]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_supabase`, JSON.stringify(supabaseConfig));
+  }, [supabaseConfig]);
+
+  const activeClient = clients.find(c => c.id === activeClientId);
+
+  const triggerConfetti = () => {
+    confetti({
+      particleCount: 70,
+      spread: 60,
+      origin: { y: 0.7 },
+      colors: ['#0d9488', '#7c3aed', '#f59e0b', '#10b981', '#f43f5e']
+    });
+  };
+
+  const addClient = (newClientData: Omit<Client, 'id' | 'created_at'>) => {
+    const newId = `client-${Date.now()}`;
+    const newClient: Client = {
+      ...newClientData,
+      id: newId,
+      created_at: new Date().toISOString().slice(0, 10),
+    };
+    setClients(prev => [...prev, newClient]);
+    setActiveClientId(newId);
+  };
+
+  const addTask = (taskData: Omit<Task, 'id' | 'status'>) => {
+    const newId = `task-${Date.now()}`;
+    const newTask: Task = {
+      ...taskData,
+      id: newId,
+      status: 'pending',
+    };
+    setTasks(prev => [newTask, ...prev]);
+  };
+
+  const toggleTaskStatus = (taskId: string) => {
+    setTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        const nextStatus: TaskStatus = t.status === 'pending' ? 'done' : 'pending';
+        
+        // Auto generate work log entry on task completion
+        if (nextStatus === 'done') {
+          triggerConfetti();
+          const todayStr = new Date().toISOString().slice(0, 10);
+          const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const newLog: WorkLog = {
+            id: `log-${Date.now()}`,
+            client_id: t.client_id,
+            task_id: t.id,
+            note: `Completed task: "${t.title}" at ${timeStr}`,
+            auto_generated: true,
+            created_at: new Date().toISOString(),
+            date: todayStr
+          };
+          setWorkLogs(logs => [newLog, ...logs]);
+        }
+
+        return { ...t, status: nextStatus };
+      }
+      return t;
+    }));
+  };
+
+  const deleteTask = (taskId: string) => {
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+  };
+
+  const toggleTaskReminder = (taskId: string) => {
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, reminder_enabled: !t.reminder_enabled } : t));
+  };
+
+  const addWorkLogNote = (clientId: string, note: string) => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const newLog: WorkLog = {
+      id: `log-${Date.now()}`,
+      client_id: clientId,
+      note,
+      auto_generated: false,
+      created_at: new Date().toISOString(),
+      date: todayStr
+    };
+    setWorkLogs(logs => [newLog, ...logs]);
+  };
+
+  const addGmbSeoEntry = (entryData: Omit<GmbSeoEntry, 'id' | 'next_check_date'>) => {
+    const dateObj = new Date(entryData.date_posted);
+    dateObj.setDate(dateObj.getDate() + 7);
+    const nextCheck = dateObj.toISOString().slice(0, 10);
+
+    const newEntry: GmbSeoEntry = {
+      ...entryData,
+      id: `entry-${Date.now()}`,
+      next_check_date: nextCheck
+    };
+    setGmbSeoEntries(prev => [newEntry, ...prev]);
+  };
+
+  const updateGmbSeoEntryMetrics = (entryId: string, searchPos: number, mapsPos: number, views: number, clicks: number) => {
+    const dateObj = new Date();
+    dateObj.setDate(dateObj.getDate() + 7);
+    const nextCheck = dateObj.toISOString().slice(0, 10);
+
+    setGmbSeoEntries(prev => prev.map(e => {
+      if (e.id === entryId) {
+        return {
+          ...e,
+          prev_search_position: e.search_position,
+          search_position: searchPos,
+          prev_maps_position: e.maps_position,
+          maps_position: mapsPos,
+          views,
+          clicks,
+          next_check_date: nextCheck
+        };
+      }
+      return e;
+    }));
+  };
+
+  const addKeyword = (clientId: string, keyword: string, currentPos: number, targetPos: number, searchVolume?: string) => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const kwId = `kw-${Date.now()}`;
+    const newKw: Keyword = {
+      id: kwId,
+      client_id: clientId,
+      keyword,
+      current_position: currentPos,
+      target_position: targetPos,
+      search_volume: searchVolume || '1,000/mo',
+      history: [
+        { id: `h-${Date.now()}`, keyword_id: kwId, position: currentPos, recorded_at: todayStr }
+      ]
+    };
+    setKeywords(prev => [...prev, newKw]);
+  };
+
+  const updateKeywordPosition = (keywordId: string, newPosition: number) => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    setKeywords(prev => prev.map(k => {
+      if (k.id === keywordId) {
+        const newHistory = [
+          ...k.history,
+          { id: `h-${Date.now()}`, keyword_id: keywordId, position: newPosition, recorded_at: todayStr }
+        ];
+        return {
+          ...k,
+          current_position: newPosition,
+          history: newHistory
+        };
+      }
+      return k;
+    }));
+  };
+
+  const deleteKeyword = (keywordId: string) => {
+    setKeywords(prev => prev.filter(k => k.id !== keywordId));
+  };
+
+  const addGoal = (goalData: Omit<Goal, 'id' | 'status'>) => {
+    let status: GoalStatus = 'on_track';
+    if (goalData.current_value >= goalData.target_value) {
+      status = 'achieved';
+    }
+    const newGoal: Goal = {
+      ...goalData,
+      id: `goal-${Date.now()}`,
+      status
+    };
+    setGoals(prev => [...prev, newGoal]);
+  };
+
+  const updateGoalProgress = (goalId: string, currentValue: number) => {
+    setGoals(prev => prev.map(g => {
+      if (g.id === goalId) {
+        let status: GoalStatus = g.status;
+        if (currentValue >= g.target_value) {
+          status = 'achieved';
+          triggerConfetti();
+        } else if (currentValue < g.target_value / 2) {
+          status = 'behind';
+        } else {
+          status = 'on_track';
+        }
+        return { ...g, current_value: currentValue, status };
+      }
+      return g;
+    }));
+  };
+
+  const addRecurringTask = (recData: Omit<RecurringTaskTemplate, 'id' | 'active'>) => {
+    const newRec: RecurringTaskTemplate = {
+      ...recData,
+      id: `rec-${Date.now()}`,
+      active: true
+    };
+    setRecurringTasks(prev => [...prev, newRec]);
+  };
+
+  const toggleRecurringTask = (recId: string) => {
+    setRecurringTasks(prev => prev.map(r => r.id === recId ? { ...r, active: !r.active } : r));
+  };
+
+  const resetToSeedData = () => {
+    setClients(INITIAL_CLIENTS);
+    setTasks(INITIAL_TASKS);
+    setWorkLogs(INITIAL_WORK_LOGS);
+    setGmbSeoEntries(INITIAL_GMB_SEO_ENTRIES);
+    setKeywords(INITIAL_KEYWORDS);
+    setGoals(INITIAL_GOALS);
+    setRecurringTasks(INITIAL_RECURRING_TASKS);
+    localStorage.clear();
+  };
+
+  return (
+    <AppContext.Provider
+      value={{
+        clients,
+        activeClientId,
+        setActiveClientId,
+        activeClient,
+        activeTab,
+        setActiveTab,
+        tasks,
+        workLogs,
+        gmbSeoEntries,
+        keywords,
+        goals,
+        recurringTasks,
+        instagramAccounts,
+        instagramConnections,
+        toggleInstagramConnect,
+        saveInstagramConnection,
+        disconnectInstagramConnection,
+        filters,
+        setFilters,
+        isFilterOpen,
+        setIsFilterOpen,
+        subashGlobalPhone,
+        setSubashGlobalPhone,
+        reportSentAtToday,
+        markReportSentToday,
+        supabaseConfig,
+        setSupabaseConfig,
+        addClient,
+        addTask,
+        toggleTaskStatus,
+        deleteTask,
+        toggleTaskReminder,
+        addWorkLogNote,
+        addGmbSeoEntry,
+        updateGmbSeoEntryMetrics,
+        addKeyword,
+        updateKeywordPosition,
+        deleteKeyword,
+        addGoal,
+        updateGoalProgress,
+        addRecurringTask,
+        toggleRecurringTask,
+        triggerConfetti,
+        resetToSeedData
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
+};
