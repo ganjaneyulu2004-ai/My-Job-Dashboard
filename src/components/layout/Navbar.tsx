@@ -6,7 +6,8 @@ import {
   Check,
   Send,
   Settings,
-  CheckCircle2
+  CheckCircle2,
+  LogOut
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { shareOrDownloadFullDayReport } from '../../utils/pdfReport';
@@ -36,7 +37,9 @@ export const Navbar: React.FC<NavbarProps> = ({
     gmbSeoEntries,
     subashGlobalPhone,
     reportSentAtToday,
-    markReportSentToday
+    markReportSentToday,
+    user,
+    logout
   } = useApp();
 
   const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
@@ -258,6 +261,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="Antic AI Settings"
           >
             <Settings className="w-4 h-4" />
+          </button>
+
+          {/* Logout Button */}
+          <button
+            onClick={logout}
+            className="p-2 sm:px-3 sm:py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 transition-all font-bold text-xs flex items-center gap-1.5"
+            title={`Log out (${user?.username || 'User'})`}
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Logout</span>
           </button>
 
         </div>

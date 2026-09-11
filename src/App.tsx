@@ -19,6 +19,8 @@ import { TagsFiltersTab } from './components/tabs/TagsFiltersTab';
 import { RecurringTasksTab } from './components/tabs/RecurringTasksTab';
 import { GoalTrackingTab } from './components/tabs/GoalTrackingTab';
 
+import { LoginScreen } from './components/auth/LoginScreen';
+
 // Modals
 import { AddClientModal } from './components/modals/AddClientModal';
 import { AddTaskModal } from './components/modals/AddTaskModal';
@@ -180,11 +182,21 @@ const DashboardContent: React.FC = () => {
   );
 };
 
+const MainAppContent: React.FC = () => {
+  const { isAuthenticated } = useApp();
+
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
+
+  return <DashboardContent />;
+};
+
 export function App() {
   return (
     <ErrorBoundary>
       <AppProvider>
-        <DashboardContent />
+        <MainAppContent />
       </AppProvider>
     </ErrorBoundary>
   );

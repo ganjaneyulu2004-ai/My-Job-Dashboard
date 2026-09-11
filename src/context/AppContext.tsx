@@ -32,7 +32,17 @@ interface SupabaseConfig {
   connected: boolean;
 }
 
+interface AppUser {
+  username: string;
+  email: string;
+}
+
 interface AppContextType {
+  isAuthenticated: boolean;
+  user: AppUser | null;
+  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => void;
+
   clients: Client[];
   activeClientId: string; // 'all' or client.id
   setActiveClientId: (id: string) => void;
@@ -110,6 +120,25 @@ function getInitialData<T>(key: string, fallback: T): T {
 }
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_auth_session`);
+      return Boolean(saved);
+    } catch {
+      return false;
+    }
+  });
+
+  const [user, setUser] = useState<AppUser | null>(() => {
+    try {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_auth_session`);
+      return saved ? JSON.parse(saved).user : null;
+    } catch {
+      return null;
+    }
+  });
+
   // Initialize state safely from LocalStorage or Seed Data
   const [supabaseConfig, setSupabaseConfig] = useState<SupabaseConfig>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_supabase`);
@@ -511,6 +540,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRecurringTasks(prev => prev.map(r => r.id === recId ? { ...r, active: !r.active } : r));
   };
 
+  const login = async (inputUsername: string, inputPassword: string): Promise<{ success: boolean; error?: string }> => {
+    const normUser = inputUsername.trim().toLowerCase();
+    
+    // Check if input is Subash / subash123 (or email format subash@anticai.app)
+    const isSubash = (normUser === 'subash' || normUser === 'subash@anticai.app') && inputPassword === 'subash123';
+
+    // If Supabase is connected, attempt Supabase Auth under the hood
+    if (supabaseConfig.url && supabaseConfig.key) {
+      try {
+        const email = normUser.includes('@') ? normUser : 'subash@anticai.app';
+        const restAuthUrl = `${supabaseConfig.url.replace(/\/$/, '')}/auth/v1/token?grant_type=password`;
+        const res = await fetch(restAuthUrl, {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseConfig.key,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email,
+            password: inputPassword
+          })
+        });
+
+        if (res.ok) {
+          const authData = await res.json();
+          const sessionUser: AppUser = {
+            username: inputUsername.trim(),
+            email: authData.user?.email || email
+          };
+          setUser(sessionUser);
+          setIsAuthenticated(true);
+          localStorage.setItem(`${LOCAL_STORAGE_KEY}_auth_session`, JSON.stringify({ user: sessionUser, access_token: authData.access_token }));
+          triggerConfetti();
+          return { success: true };
+        }
+      } catch (err) {
+        console.warn('Supabase Auth attempt notice:', err);
+      }
+    }
+
+    // Default credential validation for Subash / subash123
+    if (isSubash) {
+      const sessionUser: AppUser = { username: 'Subash', email: 'subash@anticai.app' };
+      setUser(sessionUser);
+      setIsAuthenticated(true);
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_auth_session`, JSON.stringify({ user: sessionUser }));
+      triggerConfetti();
+      return { success: true };
+    }
+
+    return { success: false, error: 'Invalid username or password' };
+  };
+
+  const logout = () => {
+    setIsAuthenticated(false);
+    setUser(null);
+    localStorage.removeItem(`${LOCAL_STORAGE_KEY}_auth_session`);
+  };
+
   const resetToSeedData = () => {
     setClients(INITIAL_CLIENTS);
     setTasks(INITIAL_TASKS);
@@ -525,6 +613,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider
       value={{
+        isAuthenticated,
+        user,
+        login,
+        logout,
         clients,
         activeClientId,
         setActiveClientId,
