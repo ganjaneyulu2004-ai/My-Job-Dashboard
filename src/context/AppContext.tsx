@@ -8,6 +8,7 @@ import {
   Keyword,
   Goal,
   RecurringTaskTemplate,
+  DailyTaskTemplate,
   TabType,
   TagFilter,
   TaskStatus,
@@ -22,6 +23,7 @@ import {
   INITIAL_KEYWORDS,
   INITIAL_GOALS,
   INITIAL_RECURRING_TASKS,
+  INITIAL_DAILY_TASK_TEMPLATES,
   INITIAL_INSTAGRAM_ACCOUNTS
 } from '../data/seedData';
 import { InstagramAccount, InstagramConnection } from '../types';
@@ -57,6 +59,7 @@ interface AppContextType {
   keywords: Keyword[];
   goals: Goal[];
   recurringTasks: RecurringTaskTemplate[];
+  dailyTaskTemplates: DailyTaskTemplate[];
   instagramAccounts: InstagramAccount[];
   instagramConnections: Record<string, InstagramConnection>;
 
@@ -95,6 +98,12 @@ interface AppContextType {
 
   addRecurringTask: (rec: Omit<RecurringTaskTemplate, 'id' | 'active'>) => void;
   toggleRecurringTask: (recId: string) => void;
+
+  addDailyTaskTemplate: (tpl: Omit<DailyTaskTemplate, 'id' | 'created_at'>) => void;
+  updateDailyTaskTemplate: (id: string, updated: Partial<DailyTaskTemplate>) => void;
+  deleteDailyTaskTemplate: (id: string) => void;
+  toggleDailyTaskTemplate: (id: string) => void;
+
   toggleInstagramConnect: (clientId: string) => void;
   saveInstagramConnection: (clientId: string, accountId: string, accessToken: string) => void;
   disconnectInstagramConnection: (clientId: string) => void;
@@ -155,6 +164,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [keywords, setKeywords] = useState<Keyword[]>(() => getInitialData('keywords', INITIAL_KEYWORDS));
   const [goals, setGoals] = useState<Goal[]>(() => getInitialData('goals', INITIAL_GOALS));
   const [recurringTasks, setRecurringTasks] = useState<RecurringTaskTemplate[]>(() => getInitialData('recurringTasks', INITIAL_RECURRING_TASKS));
+  const [dailyTaskTemplates, setDailyTaskTemplates] = useState<DailyTaskTemplate[]>(() =>
+    getInitialData('dailyTaskTemplates', INITIAL_DAILY_TASK_TEMPLATES)
+  );
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_dailyTaskTemplates`, JSON.stringify(dailyTaskTemplates));
+  }, [dailyTaskTemplates]);
+
+  // Auto-generate today's tasks from Active daily task templates
+  useEffect(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const activeTemplates = dailyTaskTemplates.filter(t => t.active);
+
+    setTasks(prevTasks => {
+      let created = false;
+      const tasksToAppend: Task[] = [];
+
+      activeTemplates.forEach(tpl => {
+        const exists = prevTasks.some(t => t.template_id === tpl.id && t.date === todayStr);
+        if (!exists) {
+          created = true;
+          tasksToAppend.push({
+            id: `task-dt-${tpl.id}-${todayStr}`,
+            client_id: tpl.client_id,
+            title: tpl.title,
+            date: todayStr,
+            time: tpl.time || '09:30 AM',
+            status: 'pending',
+            is_recurring: true,
+            recurrence_rule: tpl.recurrence,
+            tags: ['DailyTemplate', tpl.assigned_employee || 'General'],
+            work_type: tpl.work_type,
+            reminder_enabled: true,
+            template_id: tpl.id,
+            assigned_employee: tpl.assigned_employee
+          });
+        }
+      });
+
+      if (created && tasksToAppend.length > 0) {
+        return [...tasksToAppend, ...prevTasks];
+      }
+      return prevTasks;
+    });
+  }, [dailyTaskTemplates]);
   const [instagramAccounts, setInstagramAccounts] = useState<InstagramAccount[]>(() => getInitialData('instagramAccounts', INITIAL_INSTAGRAM_ACCOUNTS));
   const [instagramConnections, setInstagramConnections] = useState<Record<string, InstagramConnection>>(() => {
     const raw = getInitialData<Record<string, InstagramConnection>>('instagramConnections', {});
@@ -599,6 +653,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem(`${LOCAL_STORAGE_KEY}_auth_session`);
   };
 
+  const addDailyTaskTemplate = (tplData: Omit<DailyTaskTemplate, 'id' | 'created_at'>) => {
+    const newTpl: DailyTaskTemplate = {
+      ...tplData,
+      id: `dt-${Date.now()}`,
+      created_at: new Date().toISOString().slice(0, 10)
+    };
+    setDailyTaskTemplates(prev => [newTpl, ...prev]);
+  };
+
+  const updateDailyTaskTemplate = (id: string, updated: Partial<DailyTaskTemplate>) => {
+    setDailyTaskTemplates(prev => prev.map(t => t.id === id ? { ...t, ...updated } : t));
+  };
+
+  const deleteDailyTaskTemplate = (id: string) => {
+    setDailyTaskTemplates(prev => prev.filter(t => t.id !== id));
+  };
+
+  const toggleDailyTaskTemplate = (id: string) => {
+    setDailyTaskTemplates(prev => prev.map(t => t.id === id ? { ...t, active: !t.active } : t));
+  };
+
   const resetToSeedData = () => {
     setClients(INITIAL_CLIENTS);
     setTasks(INITIAL_TASKS);
@@ -607,6 +682,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setKeywords(INITIAL_KEYWORDS);
     setGoals(INITIAL_GOALS);
     setRecurringTasks(INITIAL_RECURRING_TASKS);
+    setDailyTaskTemplates(INITIAL_DAILY_TASK_TEMPLATES);
     localStorage.clear();
   };
 
@@ -629,6 +705,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         keywords,
         goals,
         recurringTasks,
+        dailyTaskTemplates,
+        addDailyTaskTemplate,
+        updateDailyTaskTemplate,
+        deleteDailyTaskTemplate,
+        toggleDailyTaskTemplate,
         instagramAccounts,
         instagramConnections,
         toggleInstagramConnect,

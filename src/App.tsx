@@ -12,6 +12,7 @@ import { CalendarTab } from './components/tabs/CalendarTab';
 import { WeeklyReportTab } from './components/tabs/WeeklyReportTab';
 import { MonthlyReportTab } from './components/tabs/MonthlyReportTab';
 import { DailyWorkLogTab } from './components/tabs/DailyWorkLogTab';
+import { EmployeeTab } from './components/tabs/EmployeeTab';
 import { GmbSeoTrackingTab } from './components/tabs/GmbSeoTrackingTab';
 import { InstagramTab } from './components/tabs/InstagramTab';
 import { KeywordBankTab } from './components/tabs/KeywordBankTab';
@@ -106,6 +107,8 @@ const DashboardContent: React.FC = () => {
         return <MonthlyReportTab />;
       case 'work_log':
         return <DailyWorkLogTab />;
+      case 'employee':
+        return <EmployeeTab />;
       case 'gmb_seo':
         return <GmbSeoTrackingTab onOpenLogModal={() => setIsLogGmbSeoOpen(true)} />;
       case 'instagram':

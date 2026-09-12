@@ -1,4 +1,4 @@
-import { Client, Task, WorkLog, GmbSeoEntry, Keyword, Goal, RecurringTaskTemplate, InstagramAccount } from '../types';
+import { Client, Task, WorkLog, GmbSeoEntry, Keyword, Goal, RecurringTaskTemplate, DailyTaskTemplate, InstagramAccount } from '../types';
 
 export const INITIAL_CLIENTS: Client[] = [
   {
@@ -407,3 +407,50 @@ export const INITIAL_RECURRING_TASKS: RecurringTaskTemplate[] = [
 ];
 
 export const INITIAL_INSTAGRAM_ACCOUNTS: InstagramAccount[] = [];
+
+export const INITIAL_DAILY_TASK_TEMPLATES: DailyTaskTemplate[] = [
+  {
+    id: 'dt-1',
+    title: 'Daily GMB Offer Post & Photo Update',
+    assigned_employee: 'Subash',
+    client_id: 'client-1',
+    time: '09:30 AM',
+    work_type: 'GMB Post',
+    recurrence: 'daily',
+    active: true,
+    created_at: '2026-09-01'
+  },
+  {
+    id: 'dt-2',
+    title: 'Google Business Review Monitoring & Response',
+    assigned_employee: 'Anjaneyulu',
+    client_id: 'all',
+    time: '11:00 AM',
+    work_type: 'Review Response',
+    recurrence: 'daily',
+    active: true,
+    created_at: '2026-09-01'
+  },
+  {
+    id: 'dt-3',
+    title: 'Social Media Reel & Story Publishing',
+    assigned_employee: 'Priya',
+    client_id: 'client-2',
+    time: '02:00 PM',
+    work_type: 'Social Media',
+    recurrence: 'daily',
+    active: true,
+    created_at: '2026-09-01'
+  },
+  {
+    id: 'dt-4',
+    title: 'Daily Ad Campaign Bidding & Keyword Audit',
+    assigned_employee: 'Rahul',
+    client_id: 'all',
+    time: '04:30 PM',
+    work_type: 'Ad Campaign',
+    recurrence: 'daily',
+    active: true,
+    created_at: '2026-09-01'
+  }
+];

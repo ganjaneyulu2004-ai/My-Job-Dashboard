@@ -25,6 +25,8 @@ export interface Task {
   tags: string[];
   work_type: WorkType;
   reminder_enabled?: boolean;
+  template_id?: string;
+  assigned_employee?: string;
 }
 
 export interface WorkLog {
@@ -97,6 +99,18 @@ export interface RecurringTaskTemplate {
   active: boolean;
 }
 
+export interface DailyTaskTemplate {
+  id: string;
+  title: string;
+  assigned_employee: string; // Employee name (e.g. "Subash", "Anjaneyulu", "Priya", "Rahul")
+  client_id: string; // Specific client.id or 'all' / 'general'
+  time?: string; // e.g. "09:30 AM"
+  work_type: WorkType;
+  recurrence: 'daily' | 'weekly' | 'monthly';
+  active: boolean;
+  created_at: string;
+}
+
 export interface TagFilter {
   selectedTag?: string;
   selectedStatus?: TaskStatus | 'all';
@@ -146,6 +160,7 @@ export type TabType =
   | 'weekly_report'
   | 'monthly_report'
   | 'work_log'
+  | 'employee'
   | 'gmb_seo'
   | 'instagram'
   | 'keywords'

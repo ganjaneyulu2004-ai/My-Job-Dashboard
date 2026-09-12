@@ -6,6 +6,7 @@ import {
   BarChart3,
   PieChart,
   FileText,
+  Users,
   MapPin,
   Instagram,
   KeyRound,
@@ -26,11 +27,12 @@ interface SidebarItem {
 }
 
 export const Sidebar: React.FC = () => {
-  const { activeTab, setActiveTab, tasks, gmbSeoEntries } = useApp();
+  const { activeTab, setActiveTab, tasks, gmbSeoEntries, dailyTaskTemplates } = useApp();
 
   // Calculate quick notification badges
   const todayTaskCount = tasks.filter(t => t.date === new Date().toISOString().slice(0, 10) && t.status === 'pending').length;
   const recheckDueCount = gmbSeoEntries.filter(e => e.next_check_date <= new Date().toISOString().slice(0, 10)).length;
+  const activeTemplateCount = dailyTaskTemplates.filter(t => t.active).length;
 
   const sidebarItems: SidebarItem[] = [
     { id: 'today', label: 'Today Work', icon: Sun, accentColor: 'bg-amber-500 text-white shadow-amber-500/20', badge: todayTaskCount > 0 ? `${todayTaskCount}` : undefined },
@@ -39,6 +41,7 @@ export const Sidebar: React.FC = () => {
     { id: 'weekly_report', label: 'Weekly Report', icon: BarChart3, accentColor: 'bg-indigo-600 text-white shadow-indigo-500/20' },
     { id: 'monthly_report', label: 'Monthly Report', icon: PieChart, accentColor: 'bg-emerald-600 text-white shadow-emerald-500/20' },
     { id: 'work_log', label: 'Daily Work Log', icon: FileText, accentColor: 'bg-slate-800 text-white shadow-slate-500/20' },
+    { id: 'employee', label: 'Employee', icon: Users, accentColor: 'bg-indigo-600 text-white shadow-indigo-500/20', badge: activeTemplateCount > 0 ? `${activeTemplateCount}` : undefined },
     { id: 'gmb_seo', label: 'GMB & SEO Tracking', icon: MapPin, accentColor: 'bg-rose-500 text-white shadow-rose-500/20', badge: recheckDueCount > 0 ? `${recheckDueCount} due` : undefined },
     { id: 'instagram', label: 'Instagram', icon: Instagram, accentColor: 'bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white shadow-rose-500/20' },
     { id: 'keywords', label: 'Keyword Bank', icon: KeyRound, accentColor: 'bg-cyan-600 text-white shadow-cyan-500/20' },
