@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { User, Lock, Eye, EyeOff, Sparkles, LogIn, AlertCircle, ShieldCheck } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, Sparkles, LogIn, AlertCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { TeamSpiritCard } from '../common/TeamSpiritCard';
 
 export const LoginScreen: React.FC = () => {
   const { login } = useApp();
@@ -133,15 +134,8 @@ export const LoginScreen: React.FC = () => {
         {/* Centered Glassmorphism Login Card */}
         <div className="w-full bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden">
           
-          <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-emerald-400" />
-              <span className="text-sm font-bold text-white tracking-wide">Agency Ops Access</span>
-            </div>
-            <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/30">
-              Authorized Only
-            </span>
-          </div>
+          {/* Team Spirit Quote Card */}
+          <TeamSpiritCard className="mb-6" />
 
           {errorMsg && (
             <div className="mb-5 p-3.5 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs font-semibold flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1 duration-200">

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { DailyTaskTemplate, WorkType } from '../../types';
+import { TeamSpiritCard } from '../common/TeamSpiritCard';
 
 export const EmployeeTab: React.FC = () => {
   const {
@@ -198,6 +199,9 @@ export const EmployeeTab: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Team Spirit Quote Card */}
+      <TeamSpiritCard />
 
       {/* Team Roster Quick Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
