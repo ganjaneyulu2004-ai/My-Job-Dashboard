@@ -423,7 +423,7 @@ export const INITIAL_DAILY_TASK_TEMPLATES: DailyTaskTemplate[] = [
   {
     id: 'dt-2',
     title: 'Google Business Review Monitoring & Response',
-    assigned_employee: 'Anjaneyulu',
+    assigned_employee: 'Subash',
     client_id: 'all',
     time: '11:00 AM',
     work_type: 'Review Response',
@@ -433,6 +433,17 @@ export const INITIAL_DAILY_TASK_TEMPLATES: DailyTaskTemplate[] = [
   },
   {
     id: 'dt-3',
+    title: 'Daily Client WhatsApp Support & Log',
+    assigned_employee: 'Subash',
+    client_id: 'client-1',
+    time: '04:00 PM',
+    work_type: 'General',
+    recurrence: 'daily',
+    active: true,
+    created_at: '2026-09-01'
+  },
+  {
+    id: 'dt-4',
     title: 'Social Media Reel & Story Publishing',
     assigned_employee: 'Priya',
     client_id: 'client-2',
@@ -443,10 +454,43 @@ export const INITIAL_DAILY_TASK_TEMPLATES: DailyTaskTemplate[] = [
     created_at: '2026-09-01'
   },
   {
-    id: 'dt-4',
+    id: 'dt-5',
+    title: 'Instagram DM & Comment Community Engagement',
+    assigned_employee: 'Priya',
+    client_id: 'all',
+    time: '03:30 PM',
+    work_type: 'Social Media',
+    recurrence: 'daily',
+    active: true,
+    created_at: '2026-09-01'
+  },
+  {
+    id: 'dt-6',
+    title: 'Graphic Banner & Promotional Content Creation',
+    assigned_employee: 'Priya',
+    client_id: 'client-3',
+    time: '05:00 PM',
+    work_type: 'Design',
+    recurrence: 'daily',
+    active: true,
+    created_at: '2026-09-01'
+  },
+  {
+    id: 'dt-7',
     title: 'Daily Ad Campaign Bidding & Keyword Audit',
     assigned_employee: 'Rahul',
     client_id: 'all',
+    time: '10:30 AM',
+    work_type: 'Ad Campaign',
+    recurrence: 'daily',
+    active: true,
+    created_at: '2026-09-01'
+  },
+  {
+    id: 'dt-8',
+    title: 'Google Ads Conversion & Negative Keyword Review',
+    assigned_employee: 'Rahul',
+    client_id: 'client-4',
     time: '04:30 PM',
     work_type: 'Ad Campaign',
     recurrence: 'daily',
