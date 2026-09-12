@@ -250,6 +250,11 @@ export const EmployeeTab: React.FC = () => {
                     <p className="text-[11px] font-bold text-indigo-600 mt-0.5">
                       {empActive} active task{empActive === 1 ? '' : 's'}
                     </p>
+                    {!isEmpAdmin && (
+                      <p className="text-[10px] font-extrabold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md inline-block mt-1">
+                        {assignedCount} client{assignedCount === 1 ? '' : 's'} assigned
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

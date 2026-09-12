@@ -674,9 +674,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const normUser = inputUsername.trim().toLowerCase();
 
     const ACCOUNT_MAP: Record<string, { username: string; email: string; pass: string; role: UserRole }> = {
-      subash: { username: 'Subash', email: 'Subash@iBrainLabs', pass: 'subash123', role: 'admin' },
-      'subash@ibrainlabs': { username: 'Subash', email: 'Subash@iBrainLabs', pass: 'subash123', role: 'admin' },
-      'subash@anticai.app': { username: 'Subash', email: 'Subash@iBrainLabs', pass: 'subash123', role: 'admin' },
+      subash: { username: 'Subash', email: 'Subash@iBrainLabs', pass: 'Subash@iBrain2026#', role: 'admin' },
+      'subash@ibrainlabs': { username: 'Subash', email: 'Subash@iBrainLabs', pass: 'Subash@iBrain2026#', role: 'admin' },
+      'subash@anticai.app': { username: 'Subash', email: 'Subash@iBrainLabs', pass: 'Subash@iBrain2026#', role: 'admin' },
 
       nithin: { username: 'Nithin', email: 'Nithin@iBrainLabs', pass: 'nithin@123', role: 'employee' },
       'nithin@ibrainlabs': { username: 'Nithin', email: 'Nithin@iBrainLabs', pass: 'nithin@123', role: 'employee' },
@@ -686,6 +686,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       anji: { username: 'Anji', email: 'Anji@iBrainLabs', pass: 'anji@123', role: 'employee' },
       'anji@ibrainlabs': { username: 'Anji', email: 'Anji@iBrainLabs', pass: 'anji@123', role: 'employee' },
+      anjaneyulu: { username: 'Anji', email: 'Anji@iBrainLabs', pass: 'anji@123', role: 'employee' },
+      'anjaneyulu@ibrainlabs': { username: 'Anji', email: 'Anji@iBrainLabs', pass: 'anji@123', role: 'employee' },
 
       teju: { username: 'Teju', email: 'Teju@iBrainLabs', pass: 'teju@123', role: 'employee' },
       'teju@ibrainlabs': { username: 'Teju', email: 'Teju@iBrainLabs', pass: 'teju@123', role: 'employee' },

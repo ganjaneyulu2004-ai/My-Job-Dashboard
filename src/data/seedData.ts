@@ -2,6 +2,14 @@ import { Client, Task, WorkLog, GmbSeoEntry, Keyword, Goal, RecurringTaskTemplat
 
 export const INITIAL_CLIENTS: Client[] = [
   {
+    id: 'client-5',
+    name: 'Raos Group Schools',
+    phone_number: '+19876543214',
+    business_type: 'Education',
+    avatar_color: '#2563eb', // Blue
+    created_at: '2026-07-25',
+  },
+  {
     id: 'client-1',
     name: 'SmileCare Dental Clinic',
     phone_number: '+19876543210',
