@@ -9,6 +9,8 @@ import {
   Goal,
   RecurringTaskTemplate,
   DailyTaskTemplate,
+  UserRole,
+  ClientAssignment,
   TabType,
   TagFilter,
   TaskStatus,
@@ -24,6 +26,7 @@ import {
   INITIAL_GOALS,
   INITIAL_RECURRING_TASKS,
   INITIAL_DAILY_TASK_TEMPLATES,
+  INITIAL_CLIENT_ASSIGNMENTS,
   INITIAL_INSTAGRAM_ACCOUNTS
 } from '../data/seedData';
 import { InstagramAccount, InstagramConnection } from '../types';
@@ -37,6 +40,7 @@ interface SupabaseConfig {
 interface AppUser {
   username: string;
   email: string;
+  role: UserRole;
 }
 
 interface AppContextType {
@@ -46,6 +50,10 @@ interface AppContextType {
   logout: () => void;
 
   clients: Client[];
+  assignedClients: Client[];
+  clientAssignments: ClientAssignment[];
+  assignClientsToEmployee: (employeeUsername: string, clientIds: string[]) => void;
+
   activeClientId: string; // 'all' or client.id
   setActiveClientId: (id: string) => void;
   activeClient: Client | undefined;
@@ -155,8 +163,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [clients, setClients] = useState<Client[]>(() => getInitialData('clients', INITIAL_CLIENTS));
+  const [clientAssignments, setClientAssignments] = useState<ClientAssignment[]>(() =>
+    getInitialData('clientAssignments', INITIAL_CLIENT_ASSIGNMENTS)
+  );
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_clientAssignments`, JSON.stringify(clientAssignments));
+  }, [clientAssignments]);
+
+  const assignedClients = React.useMemo(() => {
+    if (!user) return [];
+    if (user.role === 'admin') return clients;
+
+    const assignedIds = clientAssignments
+      .filter(ca => ca.employee_username.trim().toLowerCase() === user.username.trim().toLowerCase())
+      .map(ca => ca.client_id);
+
+    return clients.filter(c => assignedIds.includes(c.id));
+  }, [user, clients, clientAssignments]);
+
   const [activeClientId, setActiveClientId] = useState<string>('client-1');
   const [activeTab, setActiveTab] = useState<TabType>('today');
+
+  // Enforce client access security for employee accounts
+  useEffect(() => {
+    if (user && user.role === 'employee') {
+      const allowedIds = assignedClients.map(c => c.id);
+      if (allowedIds.length === 0) {
+        if (activeClientId !== '') setActiveClientId('');
+      } else if (!allowedIds.includes(activeClientId)) {
+        setActiveClientId(allowedIds[0]);
+      }
+    }
+  }, [user, assignedClients, activeClientId]);
 
   const [tasks, setTasks] = useState<Task[]>(() => getInitialData('tasks', INITIAL_TASKS));
   const [workLogs, setWorkLogs] = useState<WorkLog[]>(() => getInitialData('workLogs', INITIAL_WORK_LOGS));
@@ -594,49 +633,93 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRecurringTasks(prev => prev.map(r => r.id === recId ? { ...r, active: !r.active } : r));
   };
 
+  const assignClientsToEmployee = (employeeUsername: string, clientIds: string[]) => {
+    const trimmedEmp = employeeUsername.trim();
+    setClientAssignments(prev => {
+      const filtered = prev.filter(ca => ca.employee_username.trim().toLowerCase() !== trimmedEmp.toLowerCase());
+      const newAssignments: ClientAssignment[] = clientIds.map(cId => ({
+        id: `ca-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        employee_username: trimmedEmp,
+        client_id: cId,
+        assigned_at: new Date().toISOString()
+      }));
+      return [...filtered, ...newAssignments];
+    });
+
+    if (supabaseConfig.url && supabaseConfig.key) {
+      const restUrl = `${supabaseConfig.url.replace(/\/$/, '')}/rest/v1/client_assignments`;
+      fetch(`${restUrl}?employee_username=eq.${encodeURIComponent(trimmedEmp)}`, {
+        method: 'DELETE',
+        headers: { 'apikey': supabaseConfig.key, 'Authorization': `Bearer ${supabaseConfig.key}` }
+      }).then(() => {
+        if (clientIds.length > 0) {
+          fetch(restUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': supabaseConfig.key,
+              'Authorization': `Bearer ${supabaseConfig.key}`
+            },
+            body: JSON.stringify(clientIds.map(cId => ({
+              employee_username: trimmedEmp,
+              client_id: cId
+            })))
+          }).catch(err => console.warn('Supabase client_assignments sync warning:', err));
+        }
+      }).catch(() => {});
+    }
+  };
+
   const login = async (inputUsername: string, inputPassword: string): Promise<{ success: boolean; error?: string }> => {
     const normUser = inputUsername.trim().toLowerCase();
-    
-    // Check if input is Subash / subash123 (or email format subash@anticai.app)
-    const isSubash = (normUser === 'subash' || normUser === 'subash@anticai.app') && inputPassword === 'subash123';
 
-    // If Supabase is connected, attempt Supabase Auth under the hood
-    if (supabaseConfig.url && supabaseConfig.key) {
-      try {
-        const email = normUser.includes('@') ? normUser : 'subash@anticai.app';
-        const restAuthUrl = `${supabaseConfig.url.replace(/\/$/, '')}/auth/v1/token?grant_type=password`;
-        const res = await fetch(restAuthUrl, {
-          method: 'POST',
-          headers: {
-            'apikey': supabaseConfig.key,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            email,
-            password: inputPassword
-          })
-        });
+    const ACCOUNT_MAP: Record<string, { username: string; email: string; pass: string; role: UserRole }> = {
+      subash: { username: 'Subash', email: 'Subash@iBrainLabs', pass: 'subash123', role: 'admin' },
+      'subash@ibrainlabs': { username: 'Subash', email: 'Subash@iBrainLabs', pass: 'subash123', role: 'admin' },
+      'subash@anticai.app': { username: 'Subash', email: 'Subash@iBrainLabs', pass: 'subash123', role: 'admin' },
 
-        if (res.ok) {
-          const authData = await res.json();
-          const sessionUser: AppUser = {
-            username: inputUsername.trim(),
-            email: authData.user?.email || email
-          };
-          setUser(sessionUser);
-          setIsAuthenticated(true);
-          localStorage.setItem(`${LOCAL_STORAGE_KEY}_auth_session`, JSON.stringify({ user: sessionUser, access_token: authData.access_token }));
-          triggerConfetti();
-          return { success: true };
+      nithin: { username: 'Nithin', email: 'Nithin@iBrainLabs', pass: 'nithin@123', role: 'employee' },
+      'nithin@ibrainlabs': { username: 'Nithin', email: 'Nithin@iBrainLabs', pass: 'nithin@123', role: 'employee' },
+
+      bhargavi: { username: 'Bhargavi', email: 'Bhargavi@iBrainLabs', pass: 'bhargavi@123', role: 'employee' },
+      'bhargavi@ibrainlabs': { username: 'Bhargavi', email: 'Bhargavi@iBrainLabs', pass: 'bhargavi@123', role: 'employee' },
+
+      anji: { username: 'Anji', email: 'Anji@iBrainLabs', pass: 'anji@123', role: 'employee' },
+      'anji@ibrainlabs': { username: 'Anji', email: 'Anji@iBrainLabs', pass: 'anji@123', role: 'employee' },
+
+      teju: { username: 'Teju', email: 'Teju@iBrainLabs', pass: 'teju@123', role: 'employee' },
+      'teju@ibrainlabs': { username: 'Teju', email: 'Teju@iBrainLabs', pass: 'teju@123', role: 'employee' },
+
+      pavani: { username: 'Pavani', email: 'Pavani@iBrainLabs', pass: 'pavani@123', role: 'employee' },
+      'pavani@ibrainlabs': { username: 'Pavani', email: 'Pavani@iBrainLabs', pass: 'pavani@123', role: 'employee' },
+
+      sikta: { username: 'Sikta', email: 'Sikta@iBrainLabs', pass: 'sikta@123', role: 'employee' },
+      'sikta@ibrainlabs': { username: 'Sikta', email: 'Sikta@iBrainLabs', pass: 'sikta@123', role: 'employee' }
+    };
+
+    const matched = ACCOUNT_MAP[normUser];
+
+    if (matched && inputPassword === matched.pass) {
+      const sessionUser: AppUser = {
+        username: matched.username,
+        email: matched.email,
+        role: matched.role
+      };
+
+      if (sessionUser.role === 'admin') {
+        setActiveClientId('all');
+      } else {
+        const empAssigned = clientAssignments
+          .filter(ca => ca.employee_username.trim().toLowerCase() === matched.username.toLowerCase())
+          .map(ca => ca.client_id);
+        const empClients = clients.filter(c => empAssigned.includes(c.id));
+        if (empClients.length > 0) {
+          setActiveClientId(empClients[0].id);
+        } else {
+          setActiveClientId('');
         }
-      } catch (err) {
-        console.warn('Supabase Auth attempt notice:', err);
       }
-    }
 
-    // Default credential validation for Subash / subash123
-    if (isSubash) {
-      const sessionUser: AppUser = { username: 'Subash', email: 'subash@anticai.app' };
       setUser(sessionUser);
       setIsAuthenticated(true);
       localStorage.setItem(`${LOCAL_STORAGE_KEY}_auth_session`, JSON.stringify({ user: sessionUser }));
@@ -644,7 +727,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: true };
     }
 
-    return { success: false, error: 'Invalid username or password' };
+    if (supabaseConfig.url && supabaseConfig.key) {
+      try {
+        const email = normUser.includes('@') ? normUser : `${normUser}@iBrainLabs`;
+        const restAuthUrl = `${supabaseConfig.url.replace(/\/$/, '')}/auth/v1/token?grant_type=password`;
+        const res = await fetch(restAuthUrl, {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseConfig.key,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password: inputPassword })
+        });
+
+        if (res.ok) {
+          const authData = await res.json();
+          const isSubashAdmin = normUser.includes('subash');
+          const sessionUser: AppUser = {
+            username: inputUsername.trim(),
+            email: authData.user?.email || email,
+            role: isSubashAdmin ? 'admin' : 'employee'
+          };
+
+          if (sessionUser.role === 'admin') {
+            setActiveClientId('all');
+          } else {
+            const empAssigned = clientAssignments
+              .filter(ca => ca.employee_username.trim().toLowerCase() === sessionUser.username.toLowerCase())
+              .map(ca => ca.client_id);
+            const empClients = clients.filter(c => empAssigned.includes(c.id));
+            if (empClients.length > 0) {
+              setActiveClientId(empClients[0].id);
+            } else {
+              setActiveClientId('');
+            }
+          }
+
+          setUser(sessionUser);
+          setIsAuthenticated(true);
+          localStorage.setItem(`${LOCAL_STORAGE_KEY}_auth_session`, JSON.stringify({ user: sessionUser, access_token: authData.access_token }));
+          triggerConfetti();
+          return { success: true };
+        }
+      } catch (err) {
+        console.warn('Supabase Auth notice:', err);
+      }
+    }
+
+    return { success: false, error: 'Invalid credentials. Valid accounts: Subash (Admin), Nithin, Bhargavi, Anji, Teju, Pavani, Sikta' };
   };
 
   const logout = () => {
@@ -683,6 +813,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setGoals(INITIAL_GOALS);
     setRecurringTasks(INITIAL_RECURRING_TASKS);
     setDailyTaskTemplates(INITIAL_DAILY_TASK_TEMPLATES);
+    setClientAssignments(INITIAL_CLIENT_ASSIGNMENTS);
     localStorage.clear();
   };
 
@@ -694,6 +825,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         login,
         logout,
         clients,
+        assignedClients,
+        clientAssignments,
+        assignClientsToEmployee,
         activeClientId,
         setActiveClientId,
         activeClient,

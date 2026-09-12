@@ -1,4 +1,4 @@
-import { Client, Task, WorkLog, GmbSeoEntry, Keyword, Goal, RecurringTaskTemplate, DailyTaskTemplate, InstagramAccount } from '../types';
+import { Client, Task, WorkLog, GmbSeoEntry, Keyword, Goal, RecurringTaskTemplate, DailyTaskTemplate, InstagramAccount, ClientAssignment } from '../types';
 
 export const INITIAL_CLIENTS: Client[] = [
   {
@@ -498,3 +498,5 @@ export const INITIAL_DAILY_TASK_TEMPLATES: DailyTaskTemplate[] = [
     created_at: '2026-09-01'
   }
 ];
+
+export const INITIAL_CLIENT_ASSIGNMENTS: ClientAssignment[] = [];

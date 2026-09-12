@@ -23,20 +23,29 @@ export const EmployeeTab: React.FC = () => {
   const {
     dailyTaskTemplates,
     clients,
+    clientAssignments,
+    assignClientsToEmployee,
     addDailyTaskTemplate,
     updateDailyTaskTemplate,
     deleteDailyTaskTemplate,
     toggleDailyTaskTemplate,
-    tasks
+    tasks,
+    user
   } = useApp();
 
-  // State for Add / Edit Modal
+  const isAdmin = user?.role === 'admin';
+
+  // State for Add / Edit Template Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<DailyTaskTemplate | null>(null);
 
+  // State for Assign Clients Modal (Admin-only)
+  const [assigningEmployee, setAssigningEmployee] = useState<string | null>(null);
+  const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
+
   // Form fields
   const [title, setTitle] = useState('');
-  const [assignedEmployee, setAssignedEmployee] = useState('Anjaneyulu');
+  const [assignedEmployee, setAssignedEmployee] = useState('Anji');
   const [clientId, setClientId] = useState('all');
   const [time, setTime] = useState('09:30 AM');
   const [workType, setWorkType] = useState<WorkType>('GMB Post');
@@ -48,19 +57,33 @@ export const EmployeeTab: React.FC = () => {
   const [employeeFilter, setEmployeeFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
 
-  // Pre-defined employee team list for quick selection
-  const defaultEmployees = ['Subash', 'Anjaneyulu', 'Priya', 'Rahul'];
+  // Pre-defined 7 team members
+  const defaultEmployees = ['Subash', 'Nithin', 'Bhargavi', 'Anji', 'Teju', 'Pavani', 'Sikta'];
 
   const openAddModal = () => {
     setEditingTemplate(null);
     setTitle('');
-    setAssignedEmployee('Anjaneyulu');
+    setAssignedEmployee('Anji');
     setClientId('all');
     setTime('09:30 AM');
     setWorkType('GMB Post');
     setRecurrence('daily');
     setIsActive(true);
     setIsModalOpen(true);
+  };
+
+  const openAssignClientsModal = (empName: string) => {
+    const currentAssigned = clientAssignments
+      .filter(ca => ca.employee_name.toLowerCase() === empName.toLowerCase() || (empName.toLowerCase() === 'anji' && ca.employee_name.toLowerCase() === 'anjaneyulu'))
+      .map(ca => ca.client_id);
+    setSelectedClientIds(currentAssigned);
+    setAssigningEmployee(empName);
+  };
+
+  const handleSaveClientAssignments = () => {
+    if (!assigningEmployee) return;
+    assignClientsToEmployee(assigningEmployee, selectedClientIds);
+    setAssigningEmployee(null);
   };
 
   const openEditModal = (tpl: DailyTaskTemplate) => {
@@ -177,39 +200,70 @@ export const EmployeeTab: React.FC = () => {
       </div>
 
       {/* Team Roster Quick Overview Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {defaultEmployees.map(emp => {
           const empTemplates = dailyTaskTemplates.filter(
-            t => t.assigned_employee.trim().toLowerCase() === emp.trim().toLowerCase()
+            t => t.assigned_employee.trim().toLowerCase() === emp.trim().toLowerCase() ||
+                 (emp.toLowerCase() === 'anji' && t.assigned_employee.trim().toLowerCase() === 'anjaneyulu')
           );
           const empActive = empTemplates.filter(t => t.active).length;
 
+          const assignedCount = clientAssignments.filter(
+            ca => ca.employee_name.toLowerCase() === emp.toLowerCase() ||
+                  (emp.toLowerCase() === 'anji' && ca.employee_name.toLowerCase() === 'anjaneyulu')
+          ).length;
+
           const isSelected = employeeFilter.toLowerCase() === emp.toLowerCase();
+          const isEmpAdmin = emp.toLowerCase() === 'subash';
 
           return (
             <div
               key={emp}
               onClick={() => setEmployeeFilter(isSelected ? 'all' : emp)}
-              className={`p-4 rounded-2xl border transition-all cursor-pointer select-none ${
+              className={`p-4 rounded-2xl border transition-all cursor-pointer select-none flex flex-col justify-between ${
                 isSelected
                   ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-400/30 shadow-sm'
                   : 'bg-white border-slate-200/80 hover:border-indigo-200 hover:shadow-xs'
               }`}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-black text-sm flex items-center justify-center shadow-xs shrink-0">
-                  {emp.charAt(0)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-extrabold text-slate-900 text-sm truncate">{emp}</h4>
-                    {isSelected && <Check className="w-4 h-4 text-indigo-600 shrink-0" />}
+              <div>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-black text-sm flex items-center justify-center shadow-xs shrink-0">
+                    {emp.charAt(0)}
                   </div>
-                  <p className="text-[11px] font-bold text-indigo-600 mt-0.5">
-                    {empActive} active task{empActive === 1 ? '' : 's'}
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <h4 className="font-extrabold text-slate-900 text-sm truncate">{emp}</h4>
+                        <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded ${
+                          isEmpAdmin ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {isEmpAdmin ? 'Admin' : 'Emp'}
+                        </span>
+                      </div>
+                      {isSelected && <Check className="w-4 h-4 text-indigo-600 shrink-0" />}
+                    </div>
+                    <p className="text-[11px] font-bold text-indigo-600 mt-0.5">
+                      {empActive} active task{empActive === 1 ? '' : 's'}
+                    </p>
+                  </div>
                 </div>
               </div>
+
+              {/* Assign Clients Button (Admin Only) */}
+              {isAdmin && !isEmpAdmin && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openAssignClientsModal(emp);
+                  }}
+                  className="mt-3 w-full py-1.5 px-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 font-extrabold text-[11px] flex items-center justify-center gap-1.5 border border-purple-200 transition-all shadow-2xs"
+                >
+                  <Building className="w-3.5 h-3.5 text-purple-600" />
+                  <span>Assign Clients ({assignedCount})</span>
+                </button>
+              )}
             </div>
           );
         })}
@@ -596,6 +650,95 @@ export const EmployeeTab: React.FC = () => {
             </div>
 
           </form>
+        </div>
+      )}
+
+      {/* Assign Clients Modal (Admin Only) */}
+      {assigningEmployee && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Building className="w-5 h-5 text-purple-600" />
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900">
+                    Assign Clients to {assigningEmployee}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">Select which client workspaces this employee can access</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAssigningEmployee(null)}
+                className="p-1 rounded-xl text-slate-400 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="max-h-64 overflow-y-auto space-y-2 py-1">
+              {clients.length === 0 ? (
+                <p className="text-xs text-slate-500 text-center py-4">No clients available.</p>
+              ) : (
+                clients.map(client => {
+                  const isChecked = selectedClientIds.includes(client.id);
+                  return (
+                    <label
+                      key={client.id}
+                      className={`flex items-center justify-between p-3 rounded-2xl border cursor-pointer transition-all ${
+                        isChecked
+                          ? 'bg-purple-50/70 border-purple-300 ring-1 ring-purple-300'
+                          : 'bg-slate-50 border-slate-200 hover:border-purple-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className="w-7 h-7 rounded-xl text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs"
+                          style={{ backgroundColor: client.avatar_color }}
+                        >
+                          {client.name.charAt(0)}
+                        </div>
+                        <div className="truncate">
+                          <div className="text-xs font-bold text-slate-900 truncate">{client.name}</div>
+                          <div className="text-[10px] text-slate-500 truncate">{client.business_type} • {client.phone_number}</div>
+                        </div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {
+                          if (isChecked) {
+                            setSelectedClientIds(selectedClientIds.filter(id => id !== client.id));
+                          } else {
+                            setSelectedClientIds([...selectedClientIds, client.id]);
+                          }
+                        }}
+                        className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-slate-300 cursor-pointer"
+                      />
+                    </label>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setAssigningEmployee(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveClientAssignments}
+                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs shadow-md shadow-purple-500/20"
+              >
+                Save Client Assignments
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -1,5 +1,20 @@
 export type BusinessType = 'Clinic' | 'Shop' | 'Local Business' | 'Restaurant' | 'E-commerce' | 'Service Provider' | 'Real Estate' | 'Other';
 
+export type UserRole = 'admin' | 'employee';
+
+export interface AppUser {
+  username: string;
+  email: string;
+  role: UserRole;
+}
+
+export interface ClientAssignment {
+  id: string;
+  employee_username: string;
+  client_id: string;
+  assigned_at?: string;
+}
+
 export interface Client {
   id: string;
   name: string;
