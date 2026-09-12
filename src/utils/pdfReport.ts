@@ -37,7 +37,7 @@ export function buildFullDayPDFDocument(
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
-  doc.text('Antic AI - Full Day Work Report', 14, 18);
+  doc.text('iBrain Labs - Full Day Work Report', 14, 18);
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
@@ -47,7 +47,7 @@ export function buildFullDayPDFDocument(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.setTextColor(37, 211, 102);
-  doc.text('ANTIC AI AGENCY', 150, 18);
+  doc.text('iBRAIN LABS AGENCY', 145, 18);
 
   let yPos = 40;
 
@@ -245,7 +245,7 @@ export function buildFullDayPDFDocument(
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
-    doc.text(`Antic AI Executive Full Day Work Report • Page ${i} of ${totalPages}`, 14, 287);
+    doc.text(`iBrain Labs Executive Full Day Work Report • Page ${i} of ${totalPages}`, 14, 287);
   }
 
   return doc;
@@ -260,7 +260,7 @@ export async function shareOrDownloadFullDayReport(
   subashPhone: string
 ): Promise<{ sharedNative: boolean; fallbackUsed: boolean; filename: string }> {
   const doc = buildFullDayPDFDocument(clients, todayStr, formattedDate, allTasks, allGmbSeoEntries);
-  const filename = `Antic_AI_Full_Day_Report_${todayStr}.pdf`;
+  const filename = `iBrain_Labs_Full_Day_Report_${todayStr}.pdf`;
 
   // Generate in-memory PDF blob and File object
   const pdfBlob = doc.output('blob');

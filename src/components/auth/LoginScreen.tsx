@@ -113,9 +113,9 @@ export const LoginScreen: React.FC = () => {
           }`}
         >
           {/* Logo Badge */}
-          <div className="inline-flex items-center justify-center p-3 mb-4 rounded-3xl bg-white/10 border border-white/20 backdrop-blur-xl shadow-2xl group hover:scale-105 transition-transform duration-300">
-            <div className="w-14 h-14 rounded-2xl bg-white p-2 flex items-center justify-center shadow-inner overflow-hidden">
-              <img src="/antic-logo.png" alt="Antic AI" className="w-full h-full object-contain" />
+          <div className="inline-flex items-center justify-center p-3 mb-4 rounded-3xl bg-white/90 border border-white/40 backdrop-blur-xl shadow-2xl group hover:scale-105 transition-transform duration-300">
+            <div className="h-16 px-4 py-2 bg-white rounded-2xl flex items-center justify-center overflow-hidden">
+              <img src="/ibrain-logo.png" alt="iBrain Labs" className="h-full w-auto object-contain" />
             </div>
           </div>
 
@@ -223,7 +223,7 @@ export const LoginScreen: React.FC = () => {
           {/* Card Footer Credentials Hint */}
           <div className="mt-6 pt-4 border-t border-white/10 text-center">
             <p className="text-[11px] font-semibold text-purple-200/60">
-              Antic AI • Powered by iBrain Labs
+              iBrain Labs • Expertise In Every Execution
             </p>
           </div>
 

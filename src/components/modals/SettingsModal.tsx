@@ -32,9 +32,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
       setNotificationStatus('✅ Web Notifications permission granted!');
-      new Notification('Antic AI Daily Report Reminder', {
+      new Notification('iBrain Labs Daily Report Reminder', {
         body: '🕕 Test Notification: Time to send today\'s report to Subash Sir.',
-        icon: '/antic-logo.png'
+        icon: '/ibrain-logo.png'
       });
     } else {
       setNotificationStatus('⚠️ Notification permission denied or dismissed.');
@@ -44,7 +44,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const handleReset = () => {
     if (confirm('Reset all agency data back to initial sample seed data?')) {
       resetToSeedData();
-      alert('Antic AI data reset to initial seed state.');
+      alert('iBrain Labs data reset to initial seed state.');
       onClose();
     }
   };
@@ -58,7 +58,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <div className="w-8 h-8 rounded-xl bg-purple-100 text-agency-purple flex items-center justify-center font-bold">
               <Settings className="w-4 h-4" />
             </div>
-            <h3 className="font-extrabold text-lg text-slate-900">Antic AI Settings</h3>
+            <h3 className="font-extrabold text-lg text-slate-900">iBrain Labs Settings</h3>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100">
             <X className="w-4 h-4" />

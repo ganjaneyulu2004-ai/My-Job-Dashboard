@@ -42,9 +42,9 @@ export const DailyReminderBanner: React.FC = () => {
       if (isPast6PM && !reportSentAtToday && !notificationFired) {
         if ('Notification' in window && Notification.permission === 'granted') {
           try {
-            new Notification('Antic AI End-of-Day Reminder', {
+            new Notification('iBrain Labs End-of-Day Reminder', {
               body: "🕕 Time to send today's work report to Subash Sir.",
-              icon: '/antic-logo.png'
+              icon: '/ibrain-logo.png'
             });
             setNotificationFired(true);
           } catch (e) {

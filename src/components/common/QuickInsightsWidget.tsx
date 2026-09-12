@@ -46,7 +46,7 @@ export const QuickInsightsWidget: React.FC = () => {
           <div className="w-7 h-7 rounded-xl bg-purple-100 flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-agency-purple" />
           </div>
-          <span>Antic AI • Quick Insights</span>
+          <span>iBrain Labs • Quick Insights</span>
         </div>
 
         <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">

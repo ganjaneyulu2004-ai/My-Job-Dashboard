@@ -62,10 +62,10 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       return (
         <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-6 text-center">
           <div className="max-w-md w-full bg-slate-800 rounded-3xl p-8 border border-slate-700 space-y-4 shadow-2xl">
-            <div className="w-16 h-16 bg-white border border-slate-700 rounded-2xl p-2 flex items-center justify-center font-bold text-3xl mx-auto overflow-hidden">
-              <img src="/antic-logo.png" alt="Antic AI" className="w-full h-full object-contain" />
+            <div className="h-16 px-3 bg-white border border-slate-700 rounded-2xl p-2 flex items-center justify-center font-bold text-3xl mx-auto overflow-hidden">
+              <img src="/ibrain-logo.png" alt="iBrain Labs" className="h-full w-auto object-contain" />
             </div>
-            <h2 className="text-2xl font-extrabold">Antic AI Recovered</h2>
+            <h2 className="text-2xl font-extrabold">iBrain Labs Recovered</h2>
             <p className="text-slate-400 text-xs font-medium">
               An unexpected error occurred: {this.state.error?.message || 'State mismatch'}
             </p>
