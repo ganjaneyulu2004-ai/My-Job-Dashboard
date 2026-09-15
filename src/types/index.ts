@@ -20,8 +20,11 @@ export interface Client {
   name: string;
   phone_number: string;
   subash_phone_number?: string; // Subash Sir's WhatsApp number
-  business_type: BusinessType;
+  business_type: BusinessType | string;
   avatar_color: string; // e.g. '#0d9488', '#7c3aed', '#f59e0b', '#f43f5e'
+  instagram_handle?: string;
+  contact_notes?: string;
+  created_by?: string;
   created_at: string;
 }
 

@@ -209,20 +209,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
 
-              {isAdmin && (
-                <div className="p-2 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsClientDropdownOpen(false);
-                      onOpenAddClient();
-                    }}
-                    className="w-full py-2 px-3 rounded-xl bg-white hover:bg-purple-50 text-agency-purple border border-purple-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
-                  >
-                    <Plus className="w-4 h-4" /> Add New Client
-                  </button>
-                </div>
-              )}
+              <div className="p-2 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsClientDropdownOpen(false);
+                    onOpenAddClient();
+                  }}
+                  className="w-full py-2 px-3 rounded-xl bg-white hover:bg-purple-50 text-agency-purple border border-purple-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> Add New Client
+                </button>
+              </div>
             </div>
           )}
         </div>

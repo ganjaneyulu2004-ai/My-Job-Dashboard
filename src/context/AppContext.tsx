@@ -86,7 +86,7 @@ interface AppContextType {
   setSupabaseConfig: React.Dispatch<React.SetStateAction<SupabaseConfig>>;
 
   // Actions
-  addClient: (client: Omit<Client, 'id' | 'created_at'>) => void;
+  addClient: (client: Omit<Client, 'id' | 'created_at'>) => { success: boolean; error?: string };
   addTask: (task: Omit<Task, 'id' | 'status'>) => void;
   toggleTaskStatus: (taskId: string) => void;
   deleteTask: (taskId: string) => void;
@@ -445,15 +445,90 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const addClient = (newClientData: Omit<Client, 'id' | 'created_at'>) => {
-    const newId = `client-${Date.now()}`;
+  const addClient = (newClientData: Omit<Client, 'id' | 'created_at'>): { success: boolean; error?: string } => {
+    const trimmedName = newClientData.name.trim();
+    if (!trimmedName) {
+      return { success: false, error: 'Client name is required.' };
+    }
+
+    // Duplicate check (case-insensitive)
+    const exists = clients.some(c => c.name.trim().toLowerCase() === trimmedName.toLowerCase());
+    if (exists) {
+      return { success: false, error: `A client named "${trimmedName}" already exists.` };
+    }
+
+    const uniqueId = `client-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const creatorUsername = user?.username ? user.username.trim() : 'Admin';
+
     const newClient: Client = {
       ...newClientData,
-      id: newId,
+      name: trimmedName,
+      id: uniqueId,
+      created_by: creatorUsername,
       created_at: new Date().toISOString().slice(0, 10),
     };
+
+    // 1. Update local clients state immediately
     setClients(prev => [...prev, newClient]);
-    setActiveClientId(newId);
+
+    // 2. Automatically assign this client to creator (if user is logged in)
+    if (user && creatorUsername) {
+      const newAssignment: ClientAssignment = {
+        id: `ca-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        employee_username: creatorUsername,
+        client_id: uniqueId,
+        assigned_at: new Date().toISOString()
+      };
+      setClientAssignments(prev => [...prev, newAssignment]);
+    }
+
+    // 3. Switch active client workspace immediately
+    setActiveClientId(uniqueId);
+
+    // 4. Sync with Supabase DB if connected
+    if (supabaseConfig.url && supabaseConfig.key) {
+      const clientUrl = `${supabaseConfig.url.replace(/\/$/, '')}/rest/v1/clients`;
+      fetch(clientUrl, {
+        method: 'POST',
+        headers: {
+          'apikey': supabaseConfig.key,
+          'Authorization': `Bearer ${supabaseConfig.key}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          id: uniqueId,
+          name: trimmedName,
+          business_type: newClient.business_type,
+          phone_number: newClient.phone_number || '+19876543210',
+          avatar_color: newClient.avatar_color,
+          instagram_handle: newClient.instagram_handle || null,
+          contact_notes: newClient.contact_notes || null,
+          created_by: creatorUsername,
+          created_at: newClient.created_at
+        })
+      }).catch(err => console.warn('Supabase clients insert warning:', err));
+
+      if (user && creatorUsername) {
+        const assignUrl = `${supabaseConfig.url.replace(/\/$/, '')}/rest/v1/client_assignments`;
+        fetch(assignUrl, {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseConfig.key,
+            'Authorization': `Bearer ${supabaseConfig.key}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
+            employee_username: creatorUsername,
+            client_id: uniqueId
+          })
+        }).catch(err => console.warn('Supabase client_assignments insert warning:', err));
+      }
+    }
+
+    triggerConfetti();
+    return { success: true };
   };
 
   const addTask = (taskData: Omit<Task, 'id' | 'status'>) => {

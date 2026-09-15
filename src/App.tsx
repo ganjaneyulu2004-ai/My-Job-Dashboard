@@ -108,7 +108,7 @@ const DashboardContent: React.FC = () => {
       case 'work_log':
         return <DailyWorkLogTab />;
       case 'employee':
-        return <EmployeeTab />;
+        return <EmployeeTab onOpenAddClient={() => setIsAddClientOpen(true)} />;
       case 'gmb_seo':
         return <GmbSeoTrackingTab onOpenLogModal={() => setIsLogGmbSeoOpen(true)} />;
       case 'instagram':
