@@ -7,13 +7,9 @@ import {
   BarChart3,
   PieChart,
   FileText,
-  Users,
-  MapPin,
   Instagram,
   KeyRound,
-  Filter,
   Repeat,
-  Target,
   ChevronRight,
   Database
 } from 'lucide-react';
@@ -29,12 +25,10 @@ interface SidebarItem {
 }
 
 export const Sidebar: React.FC = () => {
-  const { activeTab, setActiveTab, tasks, gmbSeoEntries, dailyTaskTemplates } = useApp();
+  const { activeTab, setActiveTab, tasks } = useApp();
 
   // Calculate quick notification badges
   const todayTaskCount = tasks.filter(t => t.date === new Date().toISOString().slice(0, 10) && t.status === 'pending').length;
-  const recheckDueCount = gmbSeoEntries.filter(e => e.next_check_date <= new Date().toISOString().slice(0, 10)).length;
-  const activeTemplateCount = dailyTaskTemplates.filter(t => t.active).length;
 
   const sidebarItems: SidebarItem[] = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard, accentColor: 'bg-teal-600 text-white shadow-teal-500/20' },
@@ -45,13 +39,9 @@ export const Sidebar: React.FC = () => {
     { id: 'weekly_report', label: 'Weekly Report', icon: BarChart3, accentColor: 'bg-indigo-600 text-white shadow-indigo-500/20' },
     { id: 'monthly_report', label: 'Monthly Report', icon: PieChart, accentColor: 'bg-emerald-600 text-white shadow-emerald-500/20' },
     { id: 'work_log', label: 'Daily Work Log', icon: FileText, accentColor: 'bg-slate-800 text-white shadow-slate-500/20' },
-    { id: 'employee', label: 'Employee', icon: Users, accentColor: 'bg-indigo-600 text-white shadow-indigo-500/20', badge: activeTemplateCount > 0 ? `${activeTemplateCount}` : undefined },
-    { id: 'gmb_seo', label: 'GMB & SEO Tracking', icon: MapPin, accentColor: 'bg-rose-500 text-white shadow-rose-500/20', badge: recheckDueCount > 0 ? `${recheckDueCount} due` : undefined },
     { id: 'instagram', label: 'Instagram', icon: Instagram, accentColor: 'bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white shadow-rose-500/20' },
     { id: 'keywords', label: 'Keyword Bank', icon: KeyRound, accentColor: 'bg-cyan-600 text-white shadow-cyan-500/20' },
-    { id: 'filters', label: 'Tags & Filters', icon: Filter, accentColor: 'bg-violet-600 text-white shadow-violet-500/20' },
     { id: 'recurring', label: 'Recurring Tasks', icon: Repeat, accentColor: 'bg-orange-500 text-white shadow-orange-500/20' },
-    { id: 'goals', label: 'Goal Tracking', icon: Target, accentColor: 'bg-teal-600 text-white shadow-teal-500/20' },
   ];
 
   return (

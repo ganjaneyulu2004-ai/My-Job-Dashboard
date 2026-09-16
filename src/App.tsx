@@ -14,20 +14,15 @@ import { CalendarTab } from './components/tabs/CalendarTab';
 import { WeeklyReportTab } from './components/tabs/WeeklyReportTab';
 import { MonthlyReportTab } from './components/tabs/MonthlyReportTab';
 import { DailyWorkLogTab } from './components/tabs/DailyWorkLogTab';
-import { EmployeeTab } from './components/tabs/EmployeeTab';
-import { GmbSeoTrackingTab } from './components/tabs/GmbSeoTrackingTab';
 import { InstagramTab } from './components/tabs/InstagramTab';
 import { KeywordBankTab } from './components/tabs/KeywordBankTab';
-import { TagsFiltersTab } from './components/tabs/TagsFiltersTab';
 import { RecurringTasksTab } from './components/tabs/RecurringTasksTab';
-import { GoalTrackingTab } from './components/tabs/GoalTrackingTab';
 
 import { LoginScreen } from './components/auth/LoginScreen';
 
 // Modals
 import { AddClientModal } from './components/modals/AddClientModal';
 import { AddTaskModal } from './components/modals/AddTaskModal';
-import { LogGmbSeoModal } from './components/modals/LogGmbSeoModal';
 import { SupabaseConfigModal } from './components/modals/SupabaseConfigModal';
 import { SettingsModal } from './components/modals/SettingsModal';
 
@@ -91,7 +86,6 @@ const DashboardContent: React.FC = () => {
 
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
-  const [isLogGmbSeoOpen, setIsLogGmbSeoOpen] = useState(false);
   const [isSupabaseOpen, setIsSupabaseOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -113,20 +107,12 @@ const DashboardContent: React.FC = () => {
         return <MonthlyReportTab />;
       case 'work_log':
         return <DailyWorkLogTab />;
-      case 'employee':
-        return <EmployeeTab onOpenAddClient={() => setIsAddClientOpen(true)} />;
-      case 'gmb_seo':
-        return <GmbSeoTrackingTab onOpenLogModal={() => setIsLogGmbSeoOpen(true)} />;
       case 'instagram':
         return <InstagramTab />;
       case 'keywords':
         return <KeywordBankTab />;
-      case 'filters':
-        return <TagsFiltersTab />;
       case 'recurring':
         return <RecurringTasksTab />;
-      case 'goals':
-        return <GoalTrackingTab />;
       default:
         return <OverviewTab />;
     }
@@ -170,11 +156,6 @@ const DashboardContent: React.FC = () => {
       <AddTaskModal
         isOpen={isAddTaskOpen}
         onClose={() => setIsAddTaskOpen(false)}
-      />
-
-      <LogGmbSeoModal
-        isOpen={isLogGmbSeoOpen}
-        onClose={() => setIsLogGmbSeoOpen(false)}
       />
 
       <SupabaseConfigModal
