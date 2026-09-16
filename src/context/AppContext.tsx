@@ -15,7 +15,8 @@ import {
   TagFilter,
   TaskStatus,
   WorkType,
-  GmbSeoType
+  GmbSeoType,
+  BlogPost
 } from '../types';
 import {
   INITIAL_CLIENTS,
@@ -27,7 +28,8 @@ import {
   INITIAL_RECURRING_TASKS,
   INITIAL_DAILY_TASK_TEMPLATES,
   INITIAL_CLIENT_ASSIGNMENTS,
-  INITIAL_INSTAGRAM_ACCOUNTS
+  INITIAL_INSTAGRAM_ACCOUNTS,
+  INITIAL_BLOGS
 } from '../data/seedData';
 import { InstagramAccount, InstagramConnection } from '../types';
 
@@ -115,6 +117,11 @@ interface AppContextType {
   toggleInstagramConnect: (clientId: string) => void;
   saveInstagramConnection: (clientId: string, accountId: string, accessToken: string) => void;
   disconnectInstagramConnection: (clientId: string) => void;
+
+  blogs: BlogPost[];
+  addBlog: (blog: Omit<BlogPost, 'id' | 'status' | 'created_at'>) => void;
+  publishBlog: (id: string, liveUrl: string, publishedDate: string) => Promise<{ success: boolean; message?: string }>;
+  deleteBlog: (id: string) => void;
 
   triggerConfetti: () => void;
   resetToSeedData: () => void;
@@ -207,9 +214,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getInitialData('dailyTaskTemplates', INITIAL_DAILY_TASK_TEMPLATES)
   );
 
+  const [blogs, setBlogs] = useState<BlogPost[]>(() => getInitialData('blogs', INITIAL_BLOGS));
+
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_dailyTaskTemplates`, JSON.stringify(dailyTaskTemplates));
   }, [dailyTaskTemplates]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_blogs`, JSON.stringify(blogs));
+  }, [blogs]);
 
   // Auto-generate today's tasks from Active daily task templates
   useEffect(() => {
@@ -890,6 +903,86 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDailyTaskTemplates(prev => prev.map(t => t.id === id ? { ...t, active: !t.active } : t));
   };
 
+  const addBlog = (blogData: Omit<BlogPost, 'id' | 'status' | 'created_at'>) => {
+    const newBlog: BlogPost = {
+      ...blogData,
+      id: `blog-${Date.now()}`,
+      status: 'draft',
+      created_at: new Date().toISOString().slice(0, 10)
+    };
+    setBlogs(prev => [newBlog, ...prev]);
+
+    if (supabaseConfig.url && supabaseConfig.key) {
+      const restUrl = `${supabaseConfig.url.replace(/\/$/, '')}/rest/v1/blogs`;
+      fetch(restUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseConfig.key,
+          'Authorization': `Bearer ${supabaseConfig.key}`
+        },
+        body: JSON.stringify(newBlog)
+      }).catch(err => console.warn('Supabase blogs insert notice:', err));
+    }
+  };
+
+  const publishBlog = async (id: string, liveUrl: string, publishedDate: string): Promise<{ success: boolean; message?: string }> => {
+    const targetBlog = blogs.find(b => b.id === id);
+    if (!targetBlog) return { success: false, message: 'Blog not found.' };
+
+    setBlogs(prev => prev.map(b => b.id === id ? {
+      ...b,
+      status: 'published',
+      live_url: liveUrl,
+      published_date: publishedDate
+    } : b));
+
+    let errorMessage = '';
+
+    if (supabaseConfig.url && supabaseConfig.key) {
+      const clientObj = clients.find(c => c.id === targetBlog.client_id);
+      const edgeUrl = `${supabaseConfig.url.replace(/\/$/, '')}/functions/v1/sync-to-sheets`;
+      
+      try {
+        const res = await fetch(edgeUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseConfig.key}`,
+            'apikey': supabaseConfig.key
+          },
+          body: JSON.stringify({
+            client_id: targetBlog.client_id,
+            client_name: clientObj ? clientObj.name : targetBlog.client_id,
+            primary_keyword: targetBlog.primary_keyword,
+            secondary_keywords: targetBlog.secondary_keywords.join(', '),
+            live_url: liveUrl,
+            published_date: publishedDate
+          })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          errorMessage = errData.message || errData.error || `Edge Function HTTP ${res.status}`;
+        }
+      } catch (err: any) {
+        errorMessage = err.message || 'Edge function call network warning';
+      }
+    }
+
+    triggerConfetti();
+
+    if (errorMessage) {
+      return { success: true, message: `Blog published! (Sheets sync status: ${errorMessage})` };
+    }
+
+    return { success: true, message: 'Blog published successfully and synced to Google Sheets!' };
+  };
+
+  const deleteBlog = (id: string) => {
+    setBlogs(prev => prev.filter(b => b.id !== id));
+  };
+
   const resetToSeedData = () => {
     setClients(INITIAL_CLIENTS);
     setTasks(INITIAL_TASKS);
@@ -900,6 +993,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRecurringTasks(INITIAL_RECURRING_TASKS);
     setDailyTaskTemplates(INITIAL_DAILY_TASK_TEMPLATES);
     setClientAssignments(INITIAL_CLIENT_ASSIGNMENTS);
+    setBlogs(INITIAL_BLOGS);
     localStorage.clear();
   };
 
@@ -930,6 +1024,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateDailyTaskTemplate,
         deleteDailyTaskTemplate,
         toggleDailyTaskTemplate,
+        blogs,
+        addBlog,
+        publishBlog,
+        deleteBlog,
         instagramAccounts,
         instagramConnections,
         toggleInstagramConnect,

@@ -20,11 +20,18 @@ const DAYS_OF_WEEK = [
 ];
 
 export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, defaultDate }) => {
-  const { clients, activeClientId, addTask } = useApp();
+  const { clients, assignedClients, activeClientId, addTask, user } = useApp();
+
+  const availableClients = user?.role === 'admin' ? clients : (assignedClients.length > 0 ? assignedClients : clients);
 
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  const [selectedClient, setSelectedClient] = useState<string>(activeClientId === 'all' ? clients[0]?.id || 'client-1' : activeClientId);
+  const [selectedClient, setSelectedClient] = useState<string>(() => {
+    if (activeClientId && activeClientId !== 'all' && availableClients.some(c => c.id === activeClientId)) {
+      return activeClientId;
+    }
+    return availableClients[0]?.id || 'client-1';
+  });
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(defaultDate || todayStr);
   const [time, setTime] = useState('10:00 AM');
@@ -90,7 +97,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, def
               onChange={(e) => setSelectedClient(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 focus:outline-none"
             >
-              {clients.map(c => (
+              {availableClients.map(c => (
                 <option key={c.id} value={c.id}>{c.name} ({c.business_type})</option>
               ))}
             </select>

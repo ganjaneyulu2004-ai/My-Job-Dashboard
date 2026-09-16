@@ -1,4 +1,29 @@
-import { Client, Task, WorkLog, GmbSeoEntry, Keyword, Goal, RecurringTaskTemplate, DailyTaskTemplate, InstagramAccount, ClientAssignment } from '../types';
+import { Client, Task, WorkLog, GmbSeoEntry, Keyword, Goal, RecurringTaskTemplate, DailyTaskTemplate, InstagramAccount, ClientAssignment, BlogPost } from '../types';
+
+export const INITIAL_BLOGS: BlogPost[] = [
+  {
+    id: 'blog-1',
+    client_id: 'client-1',
+    primary_keyword: 'best dental checkup packages',
+    secondary_keywords: ['teeth whitening cost', 'painless root canal', 'dentist near me'],
+    content: `# Best Dental Checkup Packages Guide\n\nRegular dental checkups are essential for maintaining optimal oral health. When choosing a checkup package, ensure it includes comprehensive X-rays, scaling, and preventive care.\n\n## Key Benefits\n- Early detection of cavities\n- Professional plaque removal\n- Personalized oral hygiene advice`,
+    images: [],
+    status: 'draft',
+    created_at: '2026-09-15'
+  },
+  {
+    id: 'blog-2',
+    client_id: 'client-5',
+    primary_keyword: 'best time tiger safari',
+    secondary_keywords: ['monsoon safari timing', 'winter safari schedule', 'national park booking'],
+    content: `# Ultimate Guide: Best Time for Tiger Safari\n\nPlanning a tiger safari requires timing your visit with optimal weather and animal activity. Winter months offer pleasant weather, while summer months yield higher sighting frequencies near water holes.\n\n## Recommended Months\n- November to February: Comfortable weather\n- March to June: Peak wildlife sightings`,
+    images: [],
+    status: 'published',
+    live_url: 'https://raosschools.edu/blogs/best-time-tiger-safari',
+    published_date: '2026-09-16',
+    created_at: '2026-09-10'
+  }
+];
 
 export const INITIAL_CLIENTS: Client[] = [
   {

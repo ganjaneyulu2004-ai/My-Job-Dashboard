@@ -134,6 +134,26 @@ export interface DailyTaskTemplate {
   created_at: string;
 }
 
+export type BlogStatus = 'draft' | 'published';
+
+export interface BlogImage {
+  name: string;
+  url: string;
+}
+
+export interface BlogPost {
+  id: string;
+  client_id: string;
+  primary_keyword: string;
+  secondary_keywords: string[];
+  content: string;
+  images: BlogImage[];
+  status: BlogStatus;
+  live_url?: string;
+  published_date?: string;
+  created_at: string;
+}
+
 export interface TagFilter {
   selectedTag?: string;
   selectedStatus?: TaskStatus | 'all';
@@ -177,7 +197,9 @@ export interface InstagramAccount {
 }
 
 export type TabType = 
+  | 'overview'
   | 'today'
+  | 'content_vault'
   | 'upcoming'
   | 'calendar'
   | 'weekly_report'

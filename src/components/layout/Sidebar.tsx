@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  LayoutDashboard,
   Sun,
   Clock,
   Calendar,
@@ -13,7 +14,8 @@ import {
   Filter,
   Repeat,
   Target,
-  ChevronRight
+  ChevronRight,
+  Database
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { TabType } from '../../types';
@@ -35,7 +37,9 @@ export const Sidebar: React.FC = () => {
   const activeTemplateCount = dailyTaskTemplates.filter(t => t.active).length;
 
   const sidebarItems: SidebarItem[] = [
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard, accentColor: 'bg-teal-600 text-white shadow-teal-500/20' },
     { id: 'today', label: 'Today Work', icon: Sun, accentColor: 'bg-amber-500 text-white shadow-amber-500/20', badge: todayTaskCount > 0 ? `${todayTaskCount}` : undefined },
+    { id: 'content_vault', label: 'Content Vault', icon: Database, accentColor: 'bg-purple-600 text-white shadow-purple-500/20' },
     { id: 'upcoming', label: 'Upcoming Works', icon: Clock, accentColor: 'bg-agency-teal text-white shadow-teal-500/20' },
     { id: 'calendar', label: 'Monthly Calendar', icon: Calendar, accentColor: 'bg-agency-purple text-white shadow-purple-500/20' },
     { id: 'weekly_report', label: 'Weekly Report', icon: BarChart3, accentColor: 'bg-indigo-600 text-white shadow-indigo-500/20' },

@@ -5,8 +5,10 @@ import { Sidebar } from './components/layout/Sidebar';
 import { GlobalFilterBar } from './components/common/GlobalFilterBar';
 import { DailyReminderBanner } from './components/common/DailyReminderBanner';
 
-// 11 Tab Components
+// Tab Components
+import { OverviewTab } from './components/tabs/OverviewTab';
 import { TodayTab } from './components/tabs/TodayTab';
+import { ContentVaultTab } from './components/tabs/ContentVaultTab';
 import { UpcomingTab } from './components/tabs/UpcomingTab';
 import { CalendarTab } from './components/tabs/CalendarTab';
 import { WeeklyReportTab } from './components/tabs/WeeklyReportTab';
@@ -95,8 +97,12 @@ const DashboardContent: React.FC = () => {
 
   const renderActiveTab = () => {
     switch (activeTab) {
+      case 'overview':
+        return <OverviewTab />;
       case 'today':
         return <TodayTab />;
+      case 'content_vault':
+        return <ContentVaultTab />;
       case 'upcoming':
         return <UpcomingTab />;
       case 'calendar':
@@ -122,7 +128,7 @@ const DashboardContent: React.FC = () => {
       case 'goals':
         return <GoalTrackingTab />;
       default:
-        return <TodayTab />;
+        return <OverviewTab />;
     }
   };
 
