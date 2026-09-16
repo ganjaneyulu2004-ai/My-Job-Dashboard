@@ -1,4 +1,17 @@
-import { Client, Task, WorkLog, GmbSeoEntry, Keyword, Goal, RecurringTaskTemplate, DailyTaskTemplate, InstagramAccount, ClientAssignment, BlogPost, ScheduledPost } from '../types';
+import { Client, Task, WorkLog, GmbSeoEntry, Keyword, Goal, RecurringTaskTemplate, DailyTaskTemplate, InstagramAccount, ClientAssignment, BlogPost, ScheduledPost, SpecialDayContent } from '../types';
+
+export const INITIAL_SPECIAL_DAYS: SpecialDayContent[] = [
+  {
+    id: 'sd-1',
+    client_id: 'client-1',
+    occasion_name: 'World Oral Health Day Banner & Video',
+    date: '2026-09-20',
+    media_urls: [
+      'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&w=600&q=80'
+    ],
+    created_at: new Date().toISOString().slice(0, 10)
+  }
+];
 
 export const INITIAL_SCHEDULED_POSTS: ScheduledPost[] = [
   {

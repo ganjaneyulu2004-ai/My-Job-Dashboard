@@ -194,6 +194,16 @@ export interface ScheduledPost {
   created_at: string;
 }
 
+export interface SpecialDayContent {
+  id: string;
+  client_id: string;
+  occasion_name: string;
+  date: string; // YYYY-MM-DD
+  media_urls: string[];
+  notes?: string;
+  created_at: string;
+}
+
 export interface InstagramAccount {
   id: string;
   client_id: string;

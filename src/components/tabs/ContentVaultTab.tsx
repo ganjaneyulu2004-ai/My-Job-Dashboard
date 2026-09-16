@@ -320,19 +320,37 @@ export const ContentVaultTab: React.FC = () => {
               )}
             </div>
 
-            {/* Uploaded Images Thumbnails */}
+            {/* Uploaded Images Thumbnails with Direct Download Button */}
             {uploadedImages.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+              <div className="flex flex-wrap gap-2.5 mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
                 {uploadedImages.map((img, idx) => (
-                  <div key={idx} className="relative group w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0">
+                  <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shrink-0 bg-slate-900">
                     <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => setUploadedImages(uploadedImages.filter((_, i) => i !== idx))}
-                      className="absolute inset-0 bg-slate-900/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                    <div className="absolute inset-0 bg-slate-900/70 flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const a = document.createElement('a');
+                          a.href = img.url;
+                          a.download = img.name || `blog-image-${idx + 1}`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                        }}
+                        className="p-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-sm transition-all"
+                        title="Download Image"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUploadedImages(uploadedImages.filter((_, i) => i !== idx))}
+                        className="p-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg shadow-sm transition-all"
+                        title="Remove"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

@@ -17,7 +17,8 @@ import {
   WorkType,
   GmbSeoType,
   BlogPost,
-  ScheduledPost
+  ScheduledPost,
+  SpecialDayContent
 } from '../types';
 import {
   INITIAL_CLIENTS,
@@ -31,7 +32,8 @@ import {
   INITIAL_CLIENT_ASSIGNMENTS,
   INITIAL_INSTAGRAM_ACCOUNTS,
   INITIAL_BLOGS,
-  INITIAL_SCHEDULED_POSTS
+  INITIAL_SCHEDULED_POSTS,
+  INITIAL_SPECIAL_DAYS
 } from '../data/seedData';
 import { InstagramAccount, InstagramConnection } from '../types';
 
@@ -131,6 +133,9 @@ interface AppContextType {
   cancelScheduledPost: (id: string) => void;
   publishDueScheduledPosts: () => Promise<void>;
 
+  specialDays: SpecialDayContent[];
+  addSpecialDay: (sd: Omit<SpecialDayContent, 'id' | 'created_at'>) => void;
+
   triggerConfetti: () => void;
   resetToSeedData: () => void;
 }
@@ -228,6 +233,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     getInitialData('scheduledPosts', INITIAL_SCHEDULED_POSTS)
   );
 
+  const [specialDays, setSpecialDays] = useState<SpecialDayContent[]>(() =>
+    getInitialData('specialDays', INITIAL_SPECIAL_DAYS)
+  );
+
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_dailyTaskTemplates`, JSON.stringify(dailyTaskTemplates));
   }, [dailyTaskTemplates]);
@@ -239,6 +248,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_scheduledPosts`, JSON.stringify(scheduledPosts));
   }, [scheduledPosts]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_specialDays`, JSON.stringify(specialDays));
+  }, [specialDays]);
 
   // Auto-generate today's tasks from Active daily task templates
   useEffect(() => {
@@ -940,6 +953,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         body: JSON.stringify(newBlog)
       }).catch(err => console.warn('Supabase blogs insert notice:', err));
     }
+
+    // Auto-create task so it appears in Upcoming Works timeline
+    const targetDate = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    addTask({
+      client_id: blogData.client_id,
+      title: `📝 SEO Blog: ${blogData.primary_keyword}`,
+      date: targetDate,
+      time: '11:00 AM',
+      is_recurring: false,
+      tags: ['SEO', 'Blog'],
+      work_type: 'SEO Blog',
+      reminder_enabled: true
+    });
   };
 
   const publishBlog = async (id: string, liveUrl: string, publishedDate: string): Promise<{ success: boolean; message?: string }> => {
@@ -1030,7 +1056,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }).catch(err => console.warn('Supabase scheduled_posts insert notice:', err));
     }
 
+    // Auto-create task so it appears in Upcoming Works timeline
+    const postDate = newPost.scheduled_datetime.slice(0, 10);
+    addTask({
+      client_id: newPost.client_id,
+      title: `📸 Instagram Post: ${newPost.caption.slice(0, 45)}${newPost.caption.length > 45 ? '...' : ''}`,
+      date: postDate,
+      time: '10:00 AM',
+      is_recurring: false,
+      tags: ['Instagram', 'Social'],
+      work_type: 'Social Media',
+      reminder_enabled: true
+    });
+
     return { success: true, message: 'Post scheduled successfully!' };
+  };
+
+  const addSpecialDay = (sdData: Omit<SpecialDayContent, 'id' | 'created_at'>) => {
+    const newSd: SpecialDayContent = {
+      ...sdData,
+      id: `sd-${Date.now()}`,
+      created_at: new Date().toISOString().slice(0, 10)
+    };
+    setSpecialDays(prev => [newSd, ...prev]);
+
+    // Auto-create task so it appears in Upcoming Works timeline
+    addTask({
+      client_id: sdData.client_id,
+      title: `🎉 Special Day: ${sdData.occasion_name}`,
+      date: sdData.date,
+      time: '10:00 AM',
+      is_recurring: false,
+      tags: ['SpecialDay', 'Event'],
+      work_type: 'Design',
+      reminder_enabled: true
+    });
   };
 
   const updateScheduledPost = (id: string, updated: Partial<ScheduledPost>) => {
@@ -1207,6 +1267,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateScheduledPost,
         cancelScheduledPost,
         publishDueScheduledPosts,
+        specialDays,
+        addSpecialDay,
         instagramAccounts,
         instagramConnections,
         toggleInstagramConnect,

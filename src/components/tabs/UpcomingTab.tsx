@@ -1,8 +1,11 @@
-import React from 'react';
-import { CalendarDays, Clock, Send, CheckCircle2, Trash2, Tag, ChevronRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { CalendarDays, Clock, Send, CheckCircle2, Trash2, Tag, ChevronRight, Instagram, FileText, Sparkles } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { getWhatsAppTaskLink } from '../../utils/whatsapp';
 import { Task } from '../../types';
+import { ScheduleInstagramModal } from '../modals/ScheduleInstagramModal';
+import { ScheduleBlogModal } from '../modals/ScheduleBlogModal';
+import { ScheduleSpecialDayModal } from '../modals/ScheduleSpecialDayModal';
 
 export const UpcomingTab: React.FC = () => {
   const {
@@ -14,6 +17,10 @@ export const UpcomingTab: React.FC = () => {
     deleteTask,
     filters
   } = useApp();
+
+  const [isScheduleInstagramOpen, setIsScheduleInstagramOpen] = useState(false);
+  const [isScheduleBlogOpen, setIsScheduleBlogOpen] = useState(false);
+  const [isScheduleSpecialDayOpen, setIsScheduleSpecialDayOpen] = useState(false);
 
   const todayStr = new Date().toISOString().slice(0, 10);
 
@@ -70,6 +77,51 @@ export const UpcomingTab: React.FC = () => {
             ? 'Scheduled future deliverables across all clients'
             : `Scheduled deliverables for ${activeClient?.name || 'Selected Client'}`}
         </p>
+      </div>
+
+      {/* 3 QUICK-SCHEDULE OPTIONS AT TOP OF UPCOMING WORKS (Requirement 1) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Option 1: Schedule Instagram Post */}
+        <button
+          onClick={() => setIsScheduleInstagramOpen(true)}
+          className="bg-white hover:bg-gradient-to-r hover:from-amber-500 hover:to-rose-500 hover:text-white group border border-slate-200/80 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all text-left flex items-center gap-3 cursor-pointer"
+        >
+          <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 group-hover:bg-white/20 group-hover:text-white flex items-center justify-center shrink-0">
+            <Instagram className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-white">+ Schedule Instagram Post</h4>
+            <p className="text-[11px] font-semibold text-slate-500 group-hover:text-rose-100 mt-0.5">Image/video, caption & time</p>
+          </div>
+        </button>
+
+        {/* Option 2: Schedule Blog */}
+        <button
+          onClick={() => setIsScheduleBlogOpen(true)}
+          className="bg-white hover:bg-gradient-to-r hover:from-purple-600 hover:to-indigo-600 hover:text-white group border border-slate-200/80 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all text-left flex items-center gap-3 cursor-pointer"
+        >
+          <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 group-hover:bg-white/20 group-hover:text-white flex items-center justify-center shrink-0">
+            <FileText className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-white">+ Schedule Blog</h4>
+            <p className="text-[11px] font-semibold text-slate-500 group-hover:text-purple-100 mt-0.5">Keywords, content & images</p>
+          </div>
+        </button>
+
+        {/* Option 3: Schedule Special Day Content */}
+        <button
+          onClick={() => setIsScheduleSpecialDayOpen(true)}
+          className="bg-white hover:bg-gradient-to-r hover:from-teal-600 hover:to-emerald-600 hover:text-white group border border-slate-200/80 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all text-left flex items-center gap-3 cursor-pointer"
+        >
+          <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-600 group-hover:bg-white/20 group-hover:text-white flex items-center justify-center shrink-0">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="font-extrabold text-sm text-slate-900 group-hover:text-white">+ Schedule Special Day Content</h4>
+            <p className="text-[11px] font-semibold text-slate-500 group-hover:text-teal-100 mt-0.5">Occasion, date, videos & images</p>
+          </div>
+        </button>
       </div>
 
       {dates.length === 0 ? (
@@ -187,6 +239,22 @@ export const UpcomingTab: React.FC = () => {
           })}
         </div>
       )}
+
+      {/* Quick Schedule Modals */}
+      <ScheduleInstagramModal
+        isOpen={isScheduleInstagramOpen}
+        onClose={() => setIsScheduleInstagramOpen(false)}
+      />
+
+      <ScheduleBlogModal
+        isOpen={isScheduleBlogOpen}
+        onClose={() => setIsScheduleBlogOpen(false)}
+      />
+
+      <ScheduleSpecialDayModal
+        isOpen={isScheduleSpecialDayOpen}
+        onClose={() => setIsScheduleSpecialDayOpen(false)}
+      />
 
     </div>
   );

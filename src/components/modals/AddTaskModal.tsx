@@ -34,9 +34,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, def
   });
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(defaultDate || todayStr);
-  const [time, setTime] = useState('10:00 AM');
   const [workType, setWorkType] = useState<WorkType>('GMB Post');
-  const [tagsInput, setTagsInput] = useState('GMB, Promo');
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule>('weekly');
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
@@ -53,17 +51,15 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, def
       return;
     }
 
-    const tagsArray = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
-
     addTask({
       client_id: selectedClient,
       title: title.trim(),
       date,
-      time,
+      time: '10:00 AM',
       is_recurring: isRecurring,
       recurrence_rule: isRecurring ? recurrenceRule : undefined,
       recurrence_days: isRecurring && recurrenceRule === 'custom' ? selectedDays : undefined,
-      tags: tagsArray,
+      tags: [workType.replace(' ', '')],
       work_type: workType,
       reminder_enabled: true,
     });
@@ -133,20 +129,6 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, def
 
             <div>
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                Time
-              </label>
-              <input
-                type="text"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 text-center"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
                 Category
               </label>
               <select
@@ -162,18 +144,6 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, def
                 <option value="Design">Design</option>
                 <option value="General">General</option>
               </select>
-            </div>
-
-            <div>
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                Tags (Comma separated)
-              </label>
-              <input
-                type="text"
-                value={tagsInput}
-                onChange={(e) => setTagsInput(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800"
-              />
             </div>
           </div>
 
