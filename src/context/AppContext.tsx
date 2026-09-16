@@ -1470,15 +1470,14 @@ For more information on customized solutions and service packages, visit <a href
             action: 'create',
             backlink_id: newId,
             sheet_row_id: newId,
-            client_id: data.client_id,
+            date_added: todayStr,
             client_name: clientName,
             website_name: data.website_name.trim(),
             target_page_url: data.target_page_url.trim(),
             anchor_text: data.anchor_text.trim(),
-            blog_content: autoArticle,
             status: 'Pending',
             live_url: '',
-            date_added: todayStr
+            date_live: ''
           })
         });
         const resData = await resp.json().catch(() => null);
@@ -1547,15 +1546,13 @@ For more information on customized solutions and service packages, visit <a href
             action: 'update',
             backlink_id: id,
             sheet_row_id: rowIdToMatch,
-            client_id: target.client_id,
+            date_added: target.date_added,
             client_name: clientObj ? clientObj.name : target.client_id,
             website_name: target.website_name,
             target_page_url: target.target_page_url,
             anchor_text: target.anchor_text,
-            blog_content: target.blog_content || '',
             status: 'Live',
             live_url: trimmedUrl,
-            date_added: target.date_added,
             date_live: todayStr,
             completed_at: nowIso
           })
