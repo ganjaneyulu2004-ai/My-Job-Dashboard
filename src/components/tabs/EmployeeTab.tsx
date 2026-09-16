@@ -17,8 +17,18 @@ import {
   Check
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { DailyTaskTemplate, WorkType } from '../../types';
+import { DailyTaskTemplate, WorkType, RecurrenceRule } from '../../types';
 import { TeamSpiritCard } from '../common/TeamSpiritCard';
+
+const DAYS_OF_WEEK = [
+  { id: 'sun', label: 'Sun' },
+  { id: 'mon', label: 'Mon' },
+  { id: 'tue', label: 'Tue' },
+  { id: 'wed', label: 'Wed' },
+  { id: 'thu', label: 'Thu' },
+  { id: 'fri', label: 'Fri' },
+  { id: 'sat', label: 'Sat' },
+];
 
 interface EmployeeTabProps {
   onOpenAddClient?: () => void;
@@ -54,7 +64,9 @@ export const EmployeeTab: React.FC<EmployeeTabProps> = ({ onOpenAddClient }) => 
   const [clientId, setClientId] = useState('all');
   const [time, setTime] = useState('09:30 AM');
   const [workType, setWorkType] = useState<WorkType>('GMB Post');
-  const [recurrence, setRecurrence] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [recurrence, setRecurrence] = useState<RecurrenceRule>('daily');
+  const [customDays, setCustomDays] = useState<string[]>([]);
+  const [showDaysError, setShowDaysError] = useState(false);
   const [isActive, setIsActive] = useState(true);
 
   // Search & Filter state
@@ -73,6 +85,8 @@ export const EmployeeTab: React.FC<EmployeeTabProps> = ({ onOpenAddClient }) => 
     setTime('09:30 AM');
     setWorkType('GMB Post');
     setRecurrence('daily');
+    setCustomDays([]);
+    setShowDaysError(false);
     setIsActive(true);
     setIsModalOpen(true);
   };
@@ -98,7 +112,9 @@ export const EmployeeTab: React.FC<EmployeeTabProps> = ({ onOpenAddClient }) => 
     setClientId(tpl.client_id);
     setTime(tpl.time || '09:30 AM');
     setWorkType(tpl.work_type);
-    setRecurrence(tpl.recurrence);
+    setRecurrence(tpl.recurrence || 'daily');
+    setCustomDays(tpl.recurrence_days || []);
+    setShowDaysError(false);
     setIsActive(tpl.active);
     setIsModalOpen(true);
   };
@@ -106,6 +122,11 @@ export const EmployeeTab: React.FC<EmployeeTabProps> = ({ onOpenAddClient }) => 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !assignedEmployee.trim()) return;
+
+    if (recurrence === 'custom' && customDays.length === 0) {
+      setShowDaysError(true);
+      return;
+    }
 
     const trimmedEmployee = assignedEmployee.trim();
 
@@ -117,6 +138,7 @@ export const EmployeeTab: React.FC<EmployeeTabProps> = ({ onOpenAddClient }) => 
         time,
         work_type: workType,
         recurrence,
+        recurrence_days: recurrence === 'custom' ? customDays : undefined,
         active: isActive
       });
     } else {
@@ -127,6 +149,7 @@ export const EmployeeTab: React.FC<EmployeeTabProps> = ({ onOpenAddClient }) => 
         time,
         work_type: workType,
         recurrence,
+        recurrence_days: recurrence === 'custom' ? customDays : undefined,
         active: isActive
       });
 
@@ -422,7 +445,9 @@ export const EmployeeTab: React.FC<EmployeeTabProps> = ({ onOpenAddClient }) => 
 
                         {/* Recurrence */}
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-100 text-amber-800">
-                          🔄 {tpl.recurrence}
+                          🔄 {tpl.recurrence === 'custom' && tpl.recurrence_days && tpl.recurrence_days.length > 0
+                            ? tpl.recurrence_days.map(d => d.slice(0, 3).toUpperCase()).join(', ')
+                            : tpl.recurrence}
                         </span>
                       </div>
 
@@ -620,15 +645,62 @@ export const EmployeeTab: React.FC<EmployeeTabProps> = ({ onOpenAddClient }) => 
                 </label>
                 <select
                   value={recurrence}
-                  onChange={(e) => setRecurrence(e.target.value as any)}
+                  onChange={(e) => {
+                    const val = e.target.value as RecurrenceRule;
+                    setRecurrence(val);
+                    if (val === 'custom' && customDays.length === 0) {
+                      setCustomDays([]);
+                    }
+                    setShowDaysError(false);
+                  }}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                 >
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
                   <option value="monthly">Monthly</option>
+                  <option value="custom">Custom Days</option>
                 </select>
               </div>
             </div>
+
+            {recurrence === 'custom' && (
+              <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-2xl space-y-1.5 animate-in fade-in duration-150">
+                <label className="text-[11px] font-bold text-indigo-900 uppercase tracking-wider block">
+                  Select Custom Days <span className="text-rose-500">*</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {DAYS_OF_WEEK.map(day => {
+                    const isSelected = customDays.includes(day.id);
+                    return (
+                      <button
+                        key={day.id}
+                        type="button"
+                        onClick={() => {
+                          setShowDaysError(false);
+                          if (isSelected) {
+                            setCustomDays(customDays.filter(d => d !== day.id));
+                          } else {
+                            setCustomDays([...customDays, day.id]);
+                          }
+                        }}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs scale-105'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-indigo-50'
+                        }`}
+                      >
+                        {day.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {showDaysError && customDays.length === 0 && (
+                  <p className="text-[11px] font-bold text-rose-500 mt-1">
+                    ⚠️ Please select at least 1 day for custom recurrence.
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Active Toggle Switch */}
             <div className="pt-2 border-t border-slate-100 flex items-center justify-between">

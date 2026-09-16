@@ -31,6 +31,8 @@ export interface Client {
 export type TaskStatus = 'pending' | 'done';
 export type WorkType = 'GMB Post' | 'SEO Blog' | 'Social Media' | 'Design' | 'Ad Campaign' | 'Review Response' | 'Website Update' | 'General';
 
+export type RecurrenceRule = 'daily' | 'weekly' | 'monthly' | 'custom';
+
 export interface Task {
   id: string;
   client_id: string;
@@ -39,7 +41,8 @@ export interface Task {
   time: string; // e.g. "10:30 AM"
   status: TaskStatus;
   is_recurring: boolean;
-  recurrence_rule?: 'daily' | 'weekly' | 'monthly';
+  recurrence_rule?: RecurrenceRule;
+  recurrence_days?: string[]; // e.g. ["mon", "wed", "fri"]
   tags: string[];
   work_type: WorkType;
   reminder_enabled?: boolean;
@@ -110,7 +113,8 @@ export interface RecurringTaskTemplate {
   id: string;
   client_id: string;
   title: string;
-  recurrence: 'daily' | 'weekly' | 'monthly';
+  recurrence: RecurrenceRule;
+  recurrence_days?: string[];
   work_type: WorkType;
   tags: string[];
   time: string;
@@ -124,7 +128,8 @@ export interface DailyTaskTemplate {
   client_id: string; // Specific client.id or 'all' / 'general'
   time?: string; // e.g. "09:30 AM"
   work_type: WorkType;
-  recurrence: 'daily' | 'weekly' | 'monthly';
+  recurrence: RecurrenceRule;
+  recurrence_days?: string[];
   active: boolean;
   created_at: string;
 }

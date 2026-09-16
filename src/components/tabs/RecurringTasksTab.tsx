@@ -1,14 +1,26 @@
 import React, { useState } from 'react';
 import { Repeat, Plus, CheckCircle2, Clock, Trash2, Power, Sparkles } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { WorkType } from '../../types';
+import { WorkType, RecurrenceRule } from '../../types';
+
+const DAYS_OF_WEEK = [
+  { id: 'sun', label: 'Sun' },
+  { id: 'mon', label: 'Mon' },
+  { id: 'tue', label: 'Tue' },
+  { id: 'wed', label: 'Wed' },
+  { id: 'thu', label: 'Thu' },
+  { id: 'fri', label: 'Fri' },
+  { id: 'sat', label: 'Sat' },
+];
 
 export const RecurringTasksTab: React.FC = () => {
   const { recurringTasks, activeClientId, activeClient, clients, addRecurringTask, toggleRecurringTask } = useApp();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [title, setTitle] = useState('');
-  const [recurrence, setRecurrence] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+  const [recurrence, setRecurrence] = useState<RecurrenceRule>('weekly');
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [showDaysError, setShowDaysError] = useState(false);
   const [workType, setWorkType] = useState<WorkType>('GMB Post');
   const [time, setTime] = useState('09:30 AM');
 
@@ -22,17 +34,25 @@ export const RecurringTasksTab: React.FC = () => {
     e.preventDefault();
     if (!title.trim()) return;
 
+    if (recurrence === 'custom' && selectedDays.length === 0) {
+      setShowDaysError(true);
+      return;
+    }
+
     const clientIdToUse = activeClientId === 'all' ? clients[0]?.id || 'client-1' : activeClientId;
     addRecurringTask({
       client_id: clientIdToUse,
       title: title.trim(),
       recurrence,
+      recurrence_days: recurrence === 'custom' ? selectedDays : undefined,
       work_type: workType,
       tags: ['Recurring', recurrence],
       time
     });
 
     setTitle('');
+    setSelectedDays([]);
+    setShowDaysError(false);
     setIsAddModalOpen(false);
   };
 
@@ -87,7 +107,9 @@ export const RecurringTasksTab: React.FC = () => {
                       </span>
                     )}
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-orange-100 text-orange-800">
-                      🔄 {rule.recurrence}
+                      🔄 {rule.recurrence === 'custom' && rule.recurrence_days && rule.recurrence_days.length > 0
+                        ? rule.recurrence_days.map(d => d.slice(0, 3).toUpperCase()).join(', ')
+                        : rule.recurrence}
                     </span>
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-purple-100 text-purple-700">
                       {rule.work_type}
@@ -148,12 +170,20 @@ export const RecurringTasksTab: React.FC = () => {
                 </label>
                 <select
                   value={recurrence}
-                  onChange={(e) => setRecurrence(e.target.value as any)}
+                  onChange={(e) => {
+                    const rule = e.target.value as RecurrenceRule;
+                    setRecurrence(rule);
+                    if (rule === 'custom' && selectedDays.length === 0) {
+                      setSelectedDays([]);
+                    }
+                    setShowDaysError(false);
+                  }}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800"
                 >
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
                   <option value="monthly">Monthly</option>
+                  <option value="custom">Custom Days</option>
                 </select>
               </div>
 
@@ -174,6 +204,45 @@ export const RecurringTasksTab: React.FC = () => {
                 </select>
               </div>
             </div>
+
+            {recurrence === 'custom' && (
+              <div className="p-3 bg-orange-50 border border-orange-100 rounded-2xl space-y-1.5 animate-in fade-in duration-150">
+                <label className="text-[11px] font-bold text-orange-900 uppercase tracking-wider block">
+                  Select Custom Days <span className="text-rose-500">*</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {DAYS_OF_WEEK.map(day => {
+                    const isSelected = selectedDays.includes(day.id);
+                    return (
+                      <button
+                        key={day.id}
+                        type="button"
+                        onClick={() => {
+                          setShowDaysError(false);
+                          if (isSelected) {
+                            setSelectedDays(selectedDays.filter(d => d !== day.id));
+                          } else {
+                            setSelectedDays([...selectedDays, day.id]);
+                          }
+                        }}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                          isSelected
+                            ? 'bg-orange-500 text-white border-orange-500 shadow-xs scale-105'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-orange-100'
+                        }`}
+                      >
+                        {day.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {showDaysError && selectedDays.length === 0 && (
+                  <p className="text-[11px] font-bold text-rose-500 mt-1">
+                    ⚠️ Please select at least 1 day for custom recurrence.
+                  </p>
+                )}
+              </div>
+            )}
 
             <div>
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">

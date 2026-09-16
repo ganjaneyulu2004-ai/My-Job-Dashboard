@@ -1,13 +1,23 @@
 import React, { useState } from 'react';
 import { Plus, X, Calendar, Clock, Tag } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { WorkType } from '../../types';
+import { WorkType, RecurrenceRule } from '../../types';
 
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultDate?: string;
 }
+
+const DAYS_OF_WEEK = [
+  { id: 'sun', label: 'Sun' },
+  { id: 'mon', label: 'Mon' },
+  { id: 'tue', label: 'Tue' },
+  { id: 'wed', label: 'Wed' },
+  { id: 'thu', label: 'Thu' },
+  { id: 'fri', label: 'Fri' },
+  { id: 'sat', label: 'Sat' },
+];
 
 export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, defaultDate }) => {
   const { clients, activeClientId, addTask } = useApp();
@@ -21,13 +31,20 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, def
   const [workType, setWorkType] = useState<WorkType>('GMB Post');
   const [tagsInput, setTagsInput] = useState('GMB, Promo');
   const [isRecurring, setIsRecurring] = useState(false);
-  const [recurrenceRule, setRecurrenceRule] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+  const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule>('weekly');
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [showDaysError, setShowDaysError] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+
+    if (isRecurring && recurrenceRule === 'custom' && selectedDays.length === 0) {
+      setShowDaysError(true);
+      return;
+    }
 
     const tagsArray = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
 
@@ -38,12 +55,15 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, def
       time,
       is_recurring: isRecurring,
       recurrence_rule: isRecurring ? recurrenceRule : undefined,
+      recurrence_days: isRecurring && recurrenceRule === 'custom' ? selectedDays : undefined,
       tags: tagsArray,
       work_type: workType,
       reminder_enabled: true,
     });
 
     setTitle('');
+    setSelectedDays([]);
+    setShowDaysError(false);
     onClose();
   };
 
@@ -150,30 +170,79 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, def
             </div>
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isRecurringCheck"
-                checked={isRecurring}
-                onChange={(e) => setIsRecurring(e.target.checked)}
-                className="w-4 h-4 rounded text-agency-teal focus:ring-teal-500"
-              />
-              <label htmlFor="isRecurringCheck" className="text-xs font-bold text-slate-800 cursor-pointer">
-                Recurring Task?
-              </label>
+          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isRecurringCheck"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                  className="w-4 h-4 rounded text-agency-teal focus:ring-teal-500 cursor-pointer"
+                />
+                <label htmlFor="isRecurringCheck" className="text-xs font-bold text-slate-800 cursor-pointer">
+                  Recurring Task?
+                </label>
+              </div>
+
+              {isRecurring && (
+                <select
+                  value={recurrenceRule}
+                  onChange={(e) => {
+                    const rule = e.target.value as RecurrenceRule;
+                    setRecurrenceRule(rule);
+                    if (rule === 'custom' && selectedDays.length === 0) {
+                      setSelectedDays([]);
+                    }
+                    setShowDaysError(false);
+                  }}
+                  className="bg-white border border-slate-200 rounded-lg text-xs font-bold px-2 py-1"
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="custom">Custom Days</option>
+                </select>
+              )}
             </div>
 
-            {isRecurring && (
-              <select
-                value={recurrenceRule}
-                onChange={(e) => setRecurrenceRule(e.target.value as any)}
-                className="bg-white border border-slate-200 rounded-lg text-xs font-bold px-2 py-1"
-              >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
+            {isRecurring && recurrenceRule === 'custom' && (
+              <div className="pt-2 border-t border-slate-200/60 animate-in fade-in duration-150">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+                  Select Days of Week <span className="text-rose-500">*</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {DAYS_OF_WEEK.map(day => {
+                    const isSelected = selectedDays.includes(day.id);
+                    return (
+                      <button
+                        key={day.id}
+                        type="button"
+                        onClick={() => {
+                          setShowDaysError(false);
+                          if (isSelected) {
+                            setSelectedDays(selectedDays.filter(d => d !== day.id));
+                          } else {
+                            setSelectedDays([...selectedDays, day.id]);
+                          }
+                        }}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                          isSelected
+                            ? 'bg-agency-teal text-white border-agency-teal shadow-xs scale-105'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {day.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {showDaysError && selectedDays.length === 0 && (
+                  <p className="text-[11px] font-bold text-rose-500 mt-1.5 flex items-center gap-1">
+                    ⚠️ Please select at least 1 day for custom recurrence.
+                  </p>
+                )}
+              </div>
             )}
           </div>
 

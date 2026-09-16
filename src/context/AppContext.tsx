@@ -214,7 +214,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Auto-generate today's tasks from Active daily task templates
   useEffect(() => {
     const todayStr = new Date().toISOString().slice(0, 10);
-    const activeTemplates = dailyTaskTemplates.filter(t => t.active);
+    const todayDayCode = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()];
+    const activeTemplates = dailyTaskTemplates.filter(t => {
+      if (!t.active) return false;
+      if (t.recurrence === 'custom') {
+        if (!t.recurrence_days || t.recurrence_days.length === 0) return false;
+        return t.recurrence_days.some(d => d.toLowerCase() === todayDayCode);
+      }
+      return true;
+    });
 
     setTasks(prevTasks => {
       let created = false;
@@ -233,6 +241,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             status: 'pending',
             is_recurring: true,
             recurrence_rule: tpl.recurrence,
+            recurrence_days: tpl.recurrence_days,
             tags: ['DailyTemplate', tpl.assigned_employee || 'General'],
             work_type: tpl.work_type,
             reminder_enabled: true,
