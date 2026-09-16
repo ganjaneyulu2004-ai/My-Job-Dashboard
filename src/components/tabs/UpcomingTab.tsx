@@ -196,7 +196,9 @@ export const UpcomingTab: React.FC = () => {
                               </span>
                               {task.is_recurring && (
                                 <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                                  🔄 {task.recurrence_rule}
+                                  🔄 {task.recurrence_rule === 'custom' && task.recurrence_days && task.recurrence_days.length > 0
+                                    ? task.recurrence_days.map(d => d.slice(0, 3).toUpperCase()).join(', ')
+                                    : (task.recurrence_rule || 'Recurring')}
                                 </span>
                               )}
                             </div>

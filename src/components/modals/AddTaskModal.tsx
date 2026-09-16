@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, X, Calendar, Clock, Tag } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { WorkType, RecurrenceRule } from '../../types';
 
@@ -36,7 +36,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, def
   const [date, setDate] = useState(defaultDate || todayStr);
   const [workType, setWorkType] = useState<WorkType>('GMB Post');
   const [isRecurring, setIsRecurring] = useState(false);
-  const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule>('weekly');
+  const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule>('daily');
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [showDaysError, setShowDaysError] = useState(false);
 
@@ -54,7 +54,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, def
     addTask({
       client_id: selectedClient,
       title: title.trim(),
-      date,
+      date: isRecurring ? todayStr : (date || todayStr),
       time: '10:00 AM',
       is_recurring: isRecurring,
       recurrence_rule: isRecurring ? recurrenceRule : undefined,
@@ -113,19 +113,22 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, def
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                Date
-              </label>
-              <input
-                type="date"
-                required
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800"
-              />
-            </div>
+          {/* Date & Category Grid */}
+          <div className={`grid ${isRecurring ? 'grid-cols-1' : 'grid-cols-2'} gap-3`}>
+            {!isRecurring && (
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800"
+                />
+              </div>
+            )}
 
             <div>
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
@@ -147,7 +150,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, def
             </div>
           </div>
 
-          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
+          {/* Recurring Task Section */}
+          <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <input
@@ -168,12 +172,9 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, def
                   onChange={(e) => {
                     const rule = e.target.value as RecurrenceRule;
                     setRecurrenceRule(rule);
-                    if (rule === 'custom' && selectedDays.length === 0) {
-                      setSelectedDays([]);
-                    }
                     setShowDaysError(false);
                   }}
-                  className="bg-white border border-slate-200 rounded-lg text-xs font-bold px-2 py-1"
+                  className="bg-white border border-slate-200 rounded-lg text-xs font-bold px-2.5 py-1 text-slate-800"
                 >
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
@@ -183,39 +184,46 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, def
               )}
             </div>
 
+            {/* Custom Days 7 Checkboxes */}
             {isRecurring && recurrenceRule === 'custom' && (
-              <div className="pt-2 border-t border-slate-200/60 animate-in fade-in duration-150">
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+              <div className="pt-2 border-t border-slate-200/60 animate-in fade-in duration-150 space-y-2">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
                   Select Days of Week <span className="text-rose-500">*</span>
                 </label>
-                <div className="flex flex-wrap gap-1.5">
+                
+                <div className="grid grid-cols-7 gap-1">
                   {DAYS_OF_WEEK.map(day => {
-                    const isSelected = selectedDays.includes(day.id);
+                    const isChecked = selectedDays.includes(day.id);
                     return (
-                      <button
+                      <label
                         key={day.id}
-                        type="button"
-                        onClick={() => {
-                          setShowDaysError(false);
-                          if (isSelected) {
-                            setSelectedDays(selectedDays.filter(d => d !== day.id));
-                          } else {
-                            setSelectedDays([...selectedDays, day.id]);
-                          }
-                        }}
-                        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                          isSelected
-                            ? 'bg-agency-teal text-white border-agency-teal shadow-xs scale-105'
+                        className={`flex flex-col items-center justify-center py-2 px-1 rounded-xl border text-xs font-bold cursor-pointer transition-all select-none ${
+                          isChecked
+                            ? 'bg-agency-teal text-white border-agency-teal shadow-xs'
                             : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
                         }`}
                       >
-                        {day.label}
-                      </button>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            setShowDaysError(false);
+                            if (e.target.checked) {
+                              setSelectedDays(prev => [...prev, day.id]);
+                            } else {
+                              setSelectedDays(prev => prev.filter(d => d !== day.id));
+                            }
+                          }}
+                          className="w-3.5 h-3.5 mb-1 text-agency-teal accent-teal-600 rounded cursor-pointer"
+                        />
+                        <span className="text-[10px] uppercase tracking-tighter">{day.label}</span>
+                      </label>
                     );
                   })}
                 </div>
+
                 {showDaysError && selectedDays.length === 0 && (
-                  <p className="text-[11px] font-bold text-rose-500 mt-1.5 flex items-center gap-1">
+                  <p className="text-[11px] font-bold text-rose-500 mt-1 flex items-center gap-1">
                     ⚠️ Please select at least 1 day for custom recurrence.
                   </p>
                 )}

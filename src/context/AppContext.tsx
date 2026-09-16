@@ -299,12 +299,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Auto-generate today's tasks from Active daily task templates
   useEffect(() => {
     const todayStr = new Date().toISOString().slice(0, 10);
-    const todayDayCode = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()];
+    const todayDate = new Date();
+    const todayDayCode = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][todayDate.getDay()];
+    const dayOfMonth = todayDate.getDate();
+
     const activeTemplates = dailyTaskTemplates.filter(t => {
       if (!t.active) return false;
-      if (t.recurrence === 'custom') {
+      const rule = t.recurrence || 'daily';
+
+      if (rule === 'daily') {
+        return true;
+      }
+      if (rule === 'custom') {
         if (!t.recurrence_days || t.recurrence_days.length === 0) return false;
         return t.recurrence_days.some(d => d.toLowerCase() === todayDayCode);
+      }
+      if (rule === 'weekly') {
+        if (t.recurrence_days && t.recurrence_days.length > 0) {
+          return t.recurrence_days.some(d => d.toLowerCase() === todayDayCode);
+        }
+        return todayDayCode === 'mon';
+      }
+      if (rule === 'monthly') {
+        return dayOfMonth === 1;
       }
       return true;
     });
@@ -632,7 +649,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: newId,
       status: 'pending',
     };
-    setTasks(prev => [newTask, ...prev]);
+
+    if (taskData.is_recurring) {
+      const newTpl: DailyTaskTemplate = {
+        id: `dt-${Date.now()}`,
+        title: taskData.title,
+        assigned_employee: taskData.assigned_employee || 'General',
+        client_id: taskData.client_id,
+        time: taskData.time || '10:00 AM',
+        work_type: taskData.work_type,
+        recurrence: taskData.recurrence_rule || 'daily',
+        recurrence_days: taskData.recurrence_days,
+        active: true,
+        created_at: new Date().toISOString()
+      };
+      setDailyTaskTemplates(prev => [newTpl, ...prev]);
+    }
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayDayCode = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()];
+
+    let shouldShowToday = true;
+    if (taskData.is_recurring) {
+      const rule = taskData.recurrence_rule || 'daily';
+      if (rule === 'custom') {
+        shouldShowToday = !!(taskData.recurrence_days && taskData.recurrence_days.some(d => d.toLowerCase() === todayDayCode));
+      } else if (rule === 'weekly') {
+        if (taskData.recurrence_days && taskData.recurrence_days.length > 0) {
+          shouldShowToday = taskData.recurrence_days.some(d => d.toLowerCase() === todayDayCode);
+        } else {
+          shouldShowToday = true;
+        }
+      } else if (rule === 'monthly') {
+        shouldShowToday = true;
+      } else {
+        shouldShowToday = true;
+      }
+    } else {
+      // Non-recurring: check if date matches today
+      shouldShowToday = (taskData.date === todayStr);
+    }
+
+    if (shouldShowToday) {
+      setTasks(prev => [newTask, ...prev]);
+    }
   };
 
   const toggleTaskStatus = (taskId: string) => {
