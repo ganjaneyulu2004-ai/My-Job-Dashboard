@@ -182,10 +182,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : { url: '', key: '', connected: false };
   });
 
-  const [clients, setClients] = useState<Client[]>(() => getInitialData('clients', INITIAL_CLIENTS));
-  const [clientAssignments, setClientAssignments] = useState<ClientAssignment[]>(() =>
-    getInitialData('clientAssignments', INITIAL_CLIENT_ASSIGNMENTS)
-  );
+  const DUMMY_CLIENT_IDS = ['client-1', 'client-2', 'client-3', 'client-4'];
+  const DUMMY_NAMES = ['SmileCare Dental Clinic', 'Urban Grind Coffee Co.', 'Aura Wellness Spa', 'Apex Motors Auto Repair'];
+
+  const [clients, setClients] = useState<Client[]>(() => {
+    const loaded = getInitialData('clients', INITIAL_CLIENTS);
+    const cleaned = loaded.filter(c => !DUMMY_CLIENT_IDS.includes(c.id) && !DUMMY_NAMES.includes(c.name));
+    // Ensure all real seed clients exist
+    INITIAL_CLIENTS.forEach(ic => {
+      if (!cleaned.some(c => c.id === ic.id)) {
+        cleaned.push(ic);
+      }
+    });
+    return cleaned;
+  });
+
+  const [clientAssignments, setClientAssignments] = useState<ClientAssignment[]>(() => {
+    const loaded = getInitialData('clientAssignments', INITIAL_CLIENT_ASSIGNMENTS);
+    return loaded.filter(ca => !DUMMY_CLIENT_IDS.includes(ca.client_id));
+  });
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_clients`, JSON.stringify(clients));
+  }, [clients]);
 
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_clientAssignments`, JSON.stringify(clientAssignments));
@@ -202,7 +221,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return clients.filter(c => assignedIds.includes(c.id));
   }, [user, clients, clientAssignments]);
 
-  const [activeClientId, setActiveClientId] = useState<string>('client-1');
+  const [activeClientId, setActiveClientId] = useState<string>('client-5');
   const [activeTab, setActiveTab] = useState<TabType>('today');
 
   // Enforce client access security for employee accounts
@@ -212,30 +231,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (allowedIds.length === 0) {
         if (activeClientId !== '') setActiveClientId('');
       } else if (!allowedIds.includes(activeClientId)) {
-        setActiveClientId(allowedIds[0]);
+        setActiveClientId(allowedIds[0] || 'client-5');
       }
     }
   }, [user, assignedClients, activeClientId]);
 
-  const [tasks, setTasks] = useState<Task[]>(() => getInitialData('tasks', INITIAL_TASKS));
-  const [workLogs, setWorkLogs] = useState<WorkLog[]>(() => getInitialData('workLogs', INITIAL_WORK_LOGS));
-  const [gmbSeoEntries, setGmbSeoEntries] = useState<GmbSeoEntry[]>(() => getInitialData('gmbSeoEntries', INITIAL_GMB_SEO_ENTRIES));
-  const [keywords, setKeywords] = useState<Keyword[]>(() => getInitialData('keywords', INITIAL_KEYWORDS));
-  const [goals, setGoals] = useState<Goal[]>(() => getInitialData('goals', INITIAL_GOALS));
-  const [recurringTasks, setRecurringTasks] = useState<RecurringTaskTemplate[]>(() => getInitialData('recurringTasks', INITIAL_RECURRING_TASKS));
-  const [dailyTaskTemplates, setDailyTaskTemplates] = useState<DailyTaskTemplate[]>(() =>
-    getInitialData('dailyTaskTemplates', INITIAL_DAILY_TASK_TEMPLATES)
-  );
+  const [tasks, setTasks] = useState<Task[]>(() => {
+    const loaded = getInitialData('tasks', INITIAL_TASKS);
+    return loaded.filter(t => !DUMMY_CLIENT_IDS.includes(t.client_id));
+  });
+  const [workLogs, setWorkLogs] = useState<WorkLog[]>(() => {
+    const loaded = getInitialData('workLogs', INITIAL_WORK_LOGS);
+    return loaded.filter(w => !DUMMY_CLIENT_IDS.includes(w.client_id));
+  });
+  const [gmbSeoEntries, setGmbSeoEntries] = useState<GmbSeoEntry[]>(() => {
+    const loaded = getInitialData('gmbSeoEntries', INITIAL_GMB_SEO_ENTRIES);
+    return loaded.filter(e => !DUMMY_CLIENT_IDS.includes(e.client_id));
+  });
+  const [keywords, setKeywords] = useState<Keyword[]>(() => {
+    const loaded = getInitialData('keywords', INITIAL_KEYWORDS);
+    return loaded.filter(k => !DUMMY_CLIENT_IDS.includes(k.client_id));
+  });
+  const [goals, setGoals] = useState<Goal[]>(() => {
+    const loaded = getInitialData('goals', INITIAL_GOALS);
+    return loaded.filter(g => !DUMMY_CLIENT_IDS.includes(g.client_id));
+  });
+  const [recurringTasks, setRecurringTasks] = useState<RecurringTaskTemplate[]>(() => {
+    const loaded = getInitialData('recurringTasks', INITIAL_RECURRING_TASKS);
+    return loaded.filter(r => !DUMMY_CLIENT_IDS.includes(r.client_id));
+  });
+  const [dailyTaskTemplates, setDailyTaskTemplates] = useState<DailyTaskTemplate[]>(() => {
+    const loaded = getInitialData('dailyTaskTemplates', INITIAL_DAILY_TASK_TEMPLATES);
+    return loaded.filter(d => !DUMMY_CLIENT_IDS.includes(d.client_id));
+  });
 
-  const [blogs, setBlogs] = useState<BlogPost[]>(() => getInitialData('blogs', INITIAL_BLOGS));
+  const [blogs, setBlogs] = useState<BlogPost[]>(() => {
+    const loaded = getInitialData('blogs', INITIAL_BLOGS);
+    return loaded.filter(b => !DUMMY_CLIENT_IDS.includes(b.client_id));
+  });
 
-  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>(() =>
-    getInitialData('scheduledPosts', INITIAL_SCHEDULED_POSTS)
-  );
+  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>(() => {
+    const loaded = getInitialData('scheduledPosts', INITIAL_SCHEDULED_POSTS);
+    return loaded.filter(s => !DUMMY_CLIENT_IDS.includes(s.client_id));
+  });
 
-  const [specialDays, setSpecialDays] = useState<SpecialDayContent[]>(() =>
-    getInitialData('specialDays', INITIAL_SPECIAL_DAYS)
-  );
+  const [specialDays, setSpecialDays] = useState<SpecialDayContent[]>(() => {
+    const loaded = getInitialData('specialDays', INITIAL_SPECIAL_DAYS);
+    return loaded.filter(sd => !DUMMY_CLIENT_IDS.includes(sd.client_id));
+  });
 
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_dailyTaskTemplates`, JSON.stringify(dailyTaskTemplates));
