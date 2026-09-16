@@ -1,4 +1,27 @@
-import { Client, Task, WorkLog, GmbSeoEntry, Keyword, Goal, RecurringTaskTemplate, DailyTaskTemplate, InstagramAccount, ClientAssignment, BlogPost } from '../types';
+import { Client, Task, WorkLog, GmbSeoEntry, Keyword, Goal, RecurringTaskTemplate, DailyTaskTemplate, InstagramAccount, ClientAssignment, BlogPost, ScheduledPost } from '../types';
+
+export const INITIAL_SCHEDULED_POSTS: ScheduledPost[] = [
+  {
+    id: 'sp-1',
+    client_id: 'client-1',
+    media_url: 'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&w=600&q=80',
+    media_type: 'image',
+    caption: 'Smile brighter with our weekend dental checkup special! Book your slot today ✨ #SmileCare #DentalHealth',
+    scheduled_datetime: new Date(Date.now() + 3600000).toISOString(),
+    status: 'pending',
+    created_at: new Date().toISOString().slice(0, 10)
+  },
+  {
+    id: 'sp-2',
+    client_id: 'client-5',
+    media_url: 'https://images.unsplash.com/photo-1546182990-dffeafbe841d?auto=format&fit=crop&w=600&q=80',
+    media_type: 'image',
+    caption: 'Admissions open for 2026-27 batch! Empowering young minds for a brighter future 🎓 #RaosSchools #Education',
+    scheduled_datetime: new Date(Date.now() - 7200000).toISOString(),
+    status: 'posted',
+    created_at: new Date().toISOString().slice(0, 10)
+  }
+];
 
 export const INITIAL_BLOGS: BlogPost[] = [
   {

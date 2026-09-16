@@ -180,6 +180,20 @@ export interface InstagramConnection {
   access_token?: string;
 }
 
+export type ScheduledPostStatus = 'pending' | 'posted' | 'failed';
+
+export interface ScheduledPost {
+  id: string;
+  client_id: string;
+  media_url: string;
+  media_type?: 'image' | 'video';
+  caption: string;
+  scheduled_datetime: string;
+  status: ScheduledPostStatus;
+  error_log?: string;
+  created_at: string;
+}
+
 export interface InstagramAccount {
   id: string;
   client_id: string;

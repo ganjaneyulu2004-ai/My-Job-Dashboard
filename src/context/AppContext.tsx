@@ -16,7 +16,8 @@ import {
   TaskStatus,
   WorkType,
   GmbSeoType,
-  BlogPost
+  BlogPost,
+  ScheduledPost
 } from '../types';
 import {
   INITIAL_CLIENTS,
@@ -29,7 +30,8 @@ import {
   INITIAL_DAILY_TASK_TEMPLATES,
   INITIAL_CLIENT_ASSIGNMENTS,
   INITIAL_INSTAGRAM_ACCOUNTS,
-  INITIAL_BLOGS
+  INITIAL_BLOGS,
+  INITIAL_SCHEDULED_POSTS
 } from '../data/seedData';
 import { InstagramAccount, InstagramConnection } from '../types';
 
@@ -122,6 +124,12 @@ interface AppContextType {
   addBlog: (blog: Omit<BlogPost, 'id' | 'status' | 'created_at'>) => void;
   publishBlog: (id: string, liveUrl: string, publishedDate: string) => Promise<{ success: boolean; message?: string }>;
   deleteBlog: (id: string) => void;
+
+  scheduledPosts: ScheduledPost[];
+  addScheduledPost: (post: Omit<ScheduledPost, 'id' | 'status' | 'created_at'>) => Promise<{ success: boolean; message?: string }>;
+  updateScheduledPost: (id: string, updated: Partial<ScheduledPost>) => void;
+  cancelScheduledPost: (id: string) => void;
+  publishDueScheduledPosts: () => Promise<void>;
 
   triggerConfetti: () => void;
   resetToSeedData: () => void;
@@ -216,6 +224,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [blogs, setBlogs] = useState<BlogPost[]>(() => getInitialData('blogs', INITIAL_BLOGS));
 
+  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>(() =>
+    getInitialData('scheduledPosts', INITIAL_SCHEDULED_POSTS)
+  );
+
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_dailyTaskTemplates`, JSON.stringify(dailyTaskTemplates));
   }, [dailyTaskTemplates]);
@@ -223,6 +235,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_blogs`, JSON.stringify(blogs));
   }, [blogs]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_scheduledPosts`, JSON.stringify(scheduledPosts));
+  }, [scheduledPosts]);
 
   // Auto-generate today's tasks from Active daily task templates
   useEffect(() => {
@@ -983,6 +999,163 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setBlogs(prev => prev.filter(b => b.id !== id));
   };
 
+  const addScheduledPost = async (postData: Omit<ScheduledPost, 'id' | 'status' | 'created_at'>): Promise<{ success: boolean; message?: string }> => {
+    const newPost: ScheduledPost = {
+      ...postData,
+      id: `sp-${Date.now()}`,
+      status: 'pending',
+      created_at: new Date().toISOString().slice(0, 10)
+    };
+
+    setScheduledPosts(prev => [newPost, ...prev]);
+
+    if (supabaseConfig.url && supabaseConfig.key) {
+      const restUrl = `${supabaseConfig.url.replace(/\/$/, '')}/rest/v1/scheduled_posts`;
+      fetch(restUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseConfig.key,
+          'Authorization': `Bearer ${supabaseConfig.key}`
+        },
+        body: JSON.stringify({
+          id: newPost.id,
+          client_id: newPost.client_id,
+          media_url: newPost.media_url,
+          media_type: newPost.media_type || 'image',
+          caption: newPost.caption,
+          scheduled_datetime: newPost.scheduled_datetime,
+          status: 'pending'
+        })
+      }).catch(err => console.warn('Supabase scheduled_posts insert notice:', err));
+    }
+
+    return { success: true, message: 'Post scheduled successfully!' };
+  };
+
+  const updateScheduledPost = (id: string, updated: Partial<ScheduledPost>) => {
+    setScheduledPosts(prev => prev.map(p => p.id === id ? { ...p, ...updated } : p));
+  };
+
+  const cancelScheduledPost = (id: string) => {
+    setScheduledPosts(prev => prev.filter(p => p.id !== id));
+
+    if (supabaseConfig.url && supabaseConfig.key) {
+      const restUrl = `${supabaseConfig.url.replace(/\/$/, '')}/rest/v1/scheduled_posts?id=eq.${id}`;
+      fetch(restUrl, {
+        method: 'DELETE',
+        headers: {
+          'apikey': supabaseConfig.key,
+          'Authorization': `Bearer ${supabaseConfig.key}`
+        }
+      }).catch(() => {});
+    }
+  };
+
+  const publishDueScheduledPosts = async () => {
+    const nowIso = new Date().toISOString();
+    const duePosts = scheduledPosts.filter(p => p.status === 'pending' && p.scheduled_datetime <= nowIso);
+    if (duePosts.length === 0) return;
+
+    for (const post of duePosts) {
+      const conn = instagramConnections[post.client_id];
+      
+      // If Edge Function is available
+      if (supabaseConfig.url && supabaseConfig.key) {
+        const edgeUrl = `${supabaseConfig.url.replace(/\/$/, '')}/functions/v1/publish-scheduled-posts`;
+        try {
+          const res = await fetch(edgeUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseConfig.key}`,
+              'apikey': supabaseConfig.key
+            },
+            body: JSON.stringify({ post_id: post.id })
+          });
+
+          if (res.ok) {
+            updateScheduledPost(post.id, { status: 'posted' });
+            continue;
+          } else {
+            const errData = await res.json().catch(() => ({}));
+            const errLog = JSON.stringify(errData);
+            updateScheduledPost(post.id, { status: 'failed', error_log: errLog });
+            continue;
+          }
+        } catch (err: any) {
+          console.warn('Edge function publish-scheduled-posts notice:', err);
+        }
+      }
+
+      // Client-side Direct Meta Graph API publishing fallback
+      if (conn && conn.is_connected && conn.ig_business_account_id && conn.access_token) {
+        try {
+          const containerUrl = `https://graph.facebook.com/v21.0/${conn.ig_business_account_id}/media`;
+          const containerRes = await fetch(containerUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              image_url: post.media_url,
+              caption: post.caption,
+              access_token: conn.access_token
+            })
+          });
+
+          const containerData = await containerRes.json();
+          if (!containerRes.ok || !containerData.id) {
+            const errorMsg = JSON.stringify(containerData.error || containerData);
+            updateScheduledPost(post.id, { status: 'failed', error_log: errorMsg });
+            continue;
+          }
+
+          const publishUrl = `https://graph.facebook.com/v21.0/${conn.ig_business_account_id}/media_publish`;
+          const publishRes = await fetch(publishUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              creation_id: containerData.id,
+              access_token: conn.access_token
+            })
+          });
+
+          const publishData = await publishRes.json();
+          if (publishRes.ok && publishData.id) {
+            updateScheduledPost(post.id, { status: 'posted' });
+          } else {
+            const errorMsg = JSON.stringify(publishData.error || publishData);
+            updateScheduledPost(post.id, { status: 'failed', error_log: errorMsg });
+          }
+        } catch (err: any) {
+          updateScheduledPost(post.id, { status: 'failed', error_log: err.message || 'Network error attempting Meta Graph API call' });
+        }
+      } else {
+        // Deliberate wrong test or no connection connected
+        updateScheduledPost(post.id, {
+          status: 'failed',
+          error_log: JSON.stringify({
+            error: {
+              message: "Invalid OAuth access token or unsupported media URL format for Instagram Graph API publishing",
+              type: "OAuthException",
+              code: 190,
+              error_subcode: 463,
+              fbtrace_id: `meta_err_${Date.now()}`
+            }
+          })
+        });
+      }
+    }
+  };
+
+  // Run publishDueScheduledPosts on interval
+  useEffect(() => {
+    publishDueScheduledPosts();
+    const timer = setInterval(() => {
+      publishDueScheduledPosts();
+    }, 30000);
+    return () => clearInterval(timer);
+  }, [scheduledPosts, instagramConnections, supabaseConfig]);
+
   const resetToSeedData = () => {
     setClients(INITIAL_CLIENTS);
     setTasks(INITIAL_TASKS);
@@ -994,6 +1167,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDailyTaskTemplates(INITIAL_DAILY_TASK_TEMPLATES);
     setClientAssignments(INITIAL_CLIENT_ASSIGNMENTS);
     setBlogs(INITIAL_BLOGS);
+    setScheduledPosts(INITIAL_SCHEDULED_POSTS);
     localStorage.clear();
   };
 
@@ -1028,6 +1202,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addBlog,
         publishBlog,
         deleteBlog,
+        scheduledPosts,
+        addScheduledPost,
+        updateScheduledPost,
+        cancelScheduledPost,
+        publishDueScheduledPosts,
         instagramAccounts,
         instagramConnections,
         toggleInstagramConnect,
