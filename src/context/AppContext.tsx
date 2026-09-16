@@ -1541,6 +1541,11 @@ For more information on customized solutions and service packages, visit <a href
     return { success: true, message: 'Backlink marked as Live & synced to Google Sheets!' };
   };
 
+  const deleteBacklink = (id: string) => {
+    setBacklinks(prev => prev.filter(b => b.id !== id));
+    setTasks(prev => prev.filter(t => t.backlink_id !== id && t.id !== `task-bl-${id}`));
+  };
+
   const getTodayTasks = React.useCallback((targetClientId: string = activeClientId): Task[] => {
     const todayStr = new Date().toISOString().slice(0, 10);
     const allowedClients = (!user || user.role === 'admin') 
