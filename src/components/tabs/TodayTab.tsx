@@ -18,8 +18,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { shareOrDownloadFullDayReport } from '../../utils/pdfReport';
 import { sanitizePhoneNumber } from '../../utils/whatsapp';
-import { Task, WorkType } from '../../types';
-import { QuickInsightsWidget } from '../common/QuickInsightsWidget';
+
 
 export const TodayTab: React.FC = () => {
   const {
@@ -194,8 +193,7 @@ export const TodayTab: React.FC = () => {
 
       </div>
 
-      {/* QUICK INSIGHTS REPLY BUBBLE (CONVERSATIONAL TEXT TOP + STAT TILES BOTTOM) */}
-      <QuickInsightsWidget />
+
 
       {/* Inline Quick Add Task Form */}
       <form onSubmit={handleQuickAdd} className="bg-white rounded-2xl p-3 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center gap-2">
