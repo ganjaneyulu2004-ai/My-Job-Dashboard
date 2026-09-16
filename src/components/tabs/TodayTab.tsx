@@ -305,9 +305,23 @@ export const TodayTab: React.FC = () => {
                             </span>
                           </div>
 
-                          <h4 className="text-base font-extrabold text-slate-900 leading-snug">
-                            🌐 {bl.website_name}
-                          </h4>
+                          <div className="pt-0.5">
+                            {(() => {
+                              const webHref = bl.website_name.startsWith('http://') || bl.website_name.startsWith('https://')
+                                ? bl.website_name
+                                : `https://${bl.website_name}`;
+                              return (
+                                <a
+                                  href={webHref}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-base font-extrabold text-blue-600 hover:text-blue-800 underline flex items-center gap-1.5"
+                                >
+                                  🌐 {bl.website_name} <ExternalLink className="w-3.5 h-3.5 shrink-0 text-blue-500" />
+                                </a>
+                              );
+                            })()}
+                          </div>
 
                           <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 pt-0.5">
                             <span className="font-semibold text-indigo-600">
@@ -317,9 +331,9 @@ export const TodayTab: React.FC = () => {
                               href={bl.target_page_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-slate-500 hover:text-indigo-600 underline font-medium truncate max-w-xs flex items-center gap-1"
+                              className="text-blue-600 hover:text-blue-800 underline font-bold truncate max-w-xs flex items-center gap-1"
                             >
-                              Target: {bl.target_page_url} <ExternalLink className="w-3 h-3 shrink-0" />
+                              Target: {bl.target_page_url} <ExternalLink className="w-3 h-3 shrink-0 text-blue-500" />
                             </a>
                           </div>
                         </div>

@@ -1395,22 +1395,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [scheduledPosts, instagramConnections, supabaseConfig]);
 
   const buildBacklinkArticle = (websiteName: string, targetUrl: string, anchorText: string, clientName?: string) => {
-    const brand = clientName || 'our featured client';
-    return `Essential Industry Insights & Guide for ${websiteName.trim()}
+    const cleanAnchor = anchorText.trim();
+    const cleanUrl = targetUrl.trim();
+    const brand = (clientName && clientName !== 'Selected Client') ? clientName.trim() : '';
 
-In today's fast-evolving digital landscape, modern consumers and businesses demand exceptional service quality, strategic consistency, and verified expertise. Establishing a reliable web presence requires continuously curating high-value resources and offering actionable recommendations to readers.
+    // Title generation: Capitalize anchor text into a natural headline without raw URLs
+    const titleTopic = cleanAnchor.charAt(0).toUpperCase() + cleanAnchor.slice(1);
+    const headline = `Planning & Experiencing ${titleTopic}: A Complete Guide`;
 
-Whether you are exploring top-tier solutions or analyzing regional market dynamics, partnering with trusted providers makes all the difference. For trusted expert guidance and comprehensive service options, explore <a href="${targetUrl.trim()}" target="_blank" rel="noopener noreferrer">${anchorText.trim()}</a>, known across the region for superior standard operations and proven client outcomes.
+    // Detect niche context from anchor text and target URL keywords
+    const combined = `${cleanAnchor} ${cleanUrl}`.toLowerCase();
+    let nicheContext = "";
 
-Key Operational Milestones:
-1. Precision & Attention to Detail: Delivering rigorous execution across every client deliverable.
-2. Customer-Centric Care: Tailoring strategies to meet specific community and organizational goals.
-3. Continuous Innovation: Adapting to modern standards, local requirements, and technology advancements.
+    if (combined.includes('safari') || combined.includes('jungle') || combined.includes('tour') || combined.includes('travel') || combined.includes('resort') || combined.includes('maharashtra') || combined.includes('tiger') || combined.includes('wildlife') || combined.includes('trip') || combined.includes('hotel')) {
+      nicheContext = `Wildlife exploration and regional nature travel offer an exhilarating escape into breathtaking natural habitats. When planning a memorable expedition, selecting top-tier accommodations, verified safari guides, and well-structured itineraries is essential for an unforgettable experience. From observing majestic wildlife to exploring scenic forest trails, proper preparation ensures a safe and deeply enriching journey.`;
+    } else if (combined.includes('dental') || combined.includes('teeth') || combined.includes('clinic') || combined.includes('health') || combined.includes('doctor') || combined.includes('care') || combined.includes('spa') || combined.includes('wellness') || combined.includes('medical')) {
+      nicheContext = `Prioritizing personal health and specialized care is fundamental to maintaining lifelong vitality and confidence. Modern practitioners utilize advanced techniques and patient-centered approaches to deliver outstanding clinical outcomes. Accessing verified medical expertise and state-of-the-art facilities gives individuals peace of mind and superior care standards.`;
+    } else if (combined.includes('coffee') || combined.includes('cafe') || combined.includes('espresso') || combined.includes('food') || combined.includes('restaurant') || combined.includes('dining')) {
+      nicheContext = `Crafting memorable culinary experiences requires a passion for premium ingredients, ambiance, and authentic craftsmanship. Coffee enthusiasts and diners alike appreciate establishments that combine artisanal traditions with modern flavor profiles, creating welcoming spaces for every occasion.`;
+    } else if (combined.includes('car') || combined.includes('auto') || combined.includes('repair') || combined.includes('motor') || combined.includes('vehicle') || combined.includes('mechanic')) {
+      nicheContext = `Navigating modern automotive care and specialized mechanical solutions demands precision engineering and certified expertise. Staying informed about vehicle maintenance standards and trusted service centers guarantees long-lasting safety, efficiency, and peak performance.`;
+    } else {
+      nicheContext = `Discovering trusted solutions and specialized expertise in today's competitive market requires careful research and verified recommendations. Partnering with recognized industry specialists ensures tailored solutions, professional execution, and exceptional long-term results.`;
+    }
 
-Strategic Takeaways for Long-Term Growth:
-Sustainable achievement relies on establishing clear objectives and implementing reliable workflows. By reviewing client outcomes and working closely with industry specialists like ${brand}, organizations maintain a strong competitive edge while delivering maximum value to their audience.
+    return `${headline}
 
-For more information on customized solutions and service packages, visit <a href="${targetUrl.trim()}" target="_blank" rel="noopener noreferrer">${anchorText.trim()}</a> to consult directly with their specialized team today.`.trim();
+${nicheContext}
+
+Key Insights on ${titleTopic}
+To achieve the best outcomes when exploring options for ${cleanAnchor.toLowerCase()}, it is crucial to focus on key factors such as reputation, verified service standards, and proven customer satisfaction. Industry specialists recommend evaluating service details thoroughly before booking or making final decisions. For those seeking trusted recommendations and top-tier services, exploring <a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${cleanAnchor}</a> provides a reliable pathway to exceptional quality and memorable results.
+
+Essential Checklist & Recommendations:
+1. Thorough Planning: Define your specific preferences and outline clear expectations in advance.
+2. Verified Expertise: Partner with established specialists${brand ? ` like ${brand}` : ''} who provide dedicated support and proven service excellence.
+3. Quality Assurance: Review authentic ratings and expert recommendations to ensure maximum satisfaction.
+
+Final Thoughts & Recommendations
+Whether you are embarking on a new adventure or seeking specialized services related to ${cleanAnchor.toLowerCase()}, working with experienced professionals makes all the difference. For complete details, expert consultations, and service options, visit <a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${cleanAnchor}</a> to connect with leading specialists today.`.trim();
   };
 
   const addBacklink = async (data: Omit<Backlink, 'id' | 'status' | 'date_added' | 'created_at'>): Promise<{ success: boolean; message?: string }> => {
