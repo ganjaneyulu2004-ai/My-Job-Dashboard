@@ -13,7 +13,11 @@ import {
   ChevronUp,
   FileSpreadsheet,
   Download,
-  Check
+  Check,
+  Globe,
+  ExternalLink,
+  Save,
+  X
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { shareOrDownloadFullDayReport } from '../../utils/pdfReport';
@@ -33,7 +37,10 @@ export const TodayTab: React.FC = () => {
     gmbSeoEntries,
     subashGlobalPhone,
     reportSentAtToday,
-    markReportSentToday
+    markReportSentToday,
+    backlinks,
+    generateBacklinkBlogContent,
+    updateBacklinkLiveUrl
   } = useApp();
 
   const [quickTitle, setQuickTitle] = useState('');
@@ -43,6 +50,13 @@ export const TodayTab: React.FC = () => {
   // Section collapsible state
   const [isCompletedCollapsed, setIsCompletedCollapsed] = useState(true);
 
+  // Backlink Modal State
+  const [activeBacklinkId, setActiveBacklinkId] = useState<string | null>(null);
+  const [isGeneratingBlog, setIsGeneratingBlog] = useState(false);
+  const [copiedText, setCopiedText] = useState(false);
+  const [liveUrlInput, setLiveUrlInput] = useState('');
+  const [isSubmittingLive, setIsSubmittingLive] = useState(false);
+
   const todayStr = new Date().toISOString().slice(0, 10);
   const formattedToday = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -51,8 +65,8 @@ export const TodayTab: React.FC = () => {
     year: 'numeric'
   });
 
-  // Filter tasks for Today
-  let todayTasks = tasks.filter(t => t.date === todayStr);
+  // Filter tasks for Today (including all pending backlink tasks)
+  let todayTasks = tasks.filter(t => t.date === todayStr || (t.backlink_id && t.status === 'pending'));
 
   // Scoped to active client if specific client chosen
   if (activeClientId !== 'all') {
@@ -312,14 +326,34 @@ export const TodayTab: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Task Action: Delete only */}
-                  <button
-                    onClick={() => deleteTask(task.id)}
-                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all shrink-0"
-                    title="Delete Task"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {/* Task Actions */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {task.backlink_id && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const bl = backlinks.find(b => b.id === task.backlink_id);
+                          if (bl) {
+                            setLiveUrlInput(bl.live_url || '');
+                            setActiveBacklinkId(bl.id);
+                          }
+                        }}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-xs transition-all cursor-pointer"
+                        title="Open Backlink Workflow & Submit Live URL"
+                      >
+                        <Globe className="w-3.5 h-3.5" />
+                        <span>Workflow</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => deleteTask(task.id)}
+                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                      title="Delete Task"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -471,6 +505,169 @@ export const TodayTab: React.FC = () => {
         </p>
 
       </div>
+
+      {/* BACKLINK WORKFLOW MODAL INSIDE TODAYTAB */}
+      {activeBacklinkId && (() => {
+        const bl = backlinks.find(b => b.id === activeBacklinkId);
+        if (!bl) return null;
+        const clientObj = clients.find(c => c.id === bl.client_id);
+        const isLive = bl.status === 'live';
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-6 max-w-2xl w-full shadow-2xl border border-slate-100 space-y-5 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150 scrollbar-thin">
+              
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-base">
+                    🌐
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-slate-900">
+                      Backlink Workflow — {bl.website_name}
+                    </h3>
+                    {clientObj && (
+                      <span className="text-xs font-semibold text-slate-500">
+                        Client: {clientObj.name}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setActiveBacklinkId(null)}
+                  className="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Reference Info Box */}
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-2 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-semibold text-indigo-600">
+                    <Tag className="w-3.5 h-3.5 inline mr-1" /> Anchor Text: <strong className="text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">{bl.anchor_text}</strong>
+                  </span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${isLive ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}>
+                    {isLive ? '🟢 Live' : '⚪ Pending'}
+                  </span>
+                </div>
+
+                <div className="pt-1">
+                  <a
+                    href={bl.target_page_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-slate-600 hover:text-indigo-600 underline font-medium truncate block flex items-center gap-1"
+                  >
+                    Target: {bl.target_page_url} <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+
+              {/* STEP 2: Generate Blog Content */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                    <Sparkles className="w-4 h-4 text-purple-600" /> STEP 2 — Blog Content
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setIsGeneratingBlog(true);
+                      await generateBacklinkBlogContent(bl.id);
+                      setIsGeneratingBlog(false);
+                    }}
+                    disabled={isGeneratingBlog}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{isGeneratingBlog ? 'Writing Article...' : (bl.blog_content ? 'Re-Generate Article' : 'Generate Blog Content')}</span>
+                  </button>
+                </div>
+
+                {bl.blog_content ? (
+                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        Generated 400-600 Word SEO Article (with link)
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(bl.blog_content!);
+                          setCopiedText(true);
+                          setTimeout(() => setCopiedText(false), 2000);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                      >
+                        {copiedText ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-emerald-600">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-slate-500" />
+                            <span>📋 Copy Article</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="text-xs font-normal text-slate-800 leading-relaxed font-mono whitespace-pre-wrap max-h-48 overflow-y-auto p-1 scrollbar-thin">
+                      {bl.blog_content}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4 text-center">
+                    <p className="text-xs text-slate-400 font-medium">
+                      Click <strong>"Generate Blog Content"</strong> above to auto-write a 400-600 word blog article with the anchor text hyperlink.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* STEP 4: Submit Live URL */}
+              <div className="pt-3 border-t border-slate-100 space-y-2">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                  STEP 4 — Submit Live Published URL (Marks Task Complete)
+                </label>
+
+                <div className="flex flex-col sm:flex-row items-center gap-2">
+                  <input
+                    type="url"
+                    placeholder="e.g. https://healthjournal.com/posts/pediatric-care-2026"
+                    value={liveUrlInput}
+                    onChange={(e) => setLiveUrlInput(e.target.value)}
+                    className="flex-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!liveUrlInput.trim()) return;
+                      setIsSubmittingLive(true);
+                      await updateBacklinkLiveUrl(bl.id, liveUrlInput.trim());
+                      setIsSubmittingLive(false);
+                      setActiveBacklinkId(null);
+                    }}
+                    disabled={isSubmittingLive || !liveUrlInput.trim()}
+                    className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-500/20 disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{isSubmittingLive ? 'Saving Live URL...' : 'Save & Mark Live'}</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

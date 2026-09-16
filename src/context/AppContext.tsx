@@ -313,6 +313,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_backlinks`, JSON.stringify(backlinks));
   }, [backlinks]);
 
+  // Auto-sync pending backlinks into tasks deck
+  useEffect(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    setTasks(prevTasks => {
+      let changed = false;
+      const tasksToAppend: Task[] = [];
+
+      backlinks.forEach(bl => {
+        const existingIdx = prevTasks.findIndex(t => t.backlink_id === bl.id || t.id === `task-bl-${bl.id}`);
+
+        if (bl.status === 'pending') {
+          if (existingIdx === -1) {
+            changed = true;
+            tasksToAppend.push({
+              id: `task-bl-${bl.id}`,
+              client_id: bl.client_id,
+              title: `Publish Backlink on ${bl.website_name} (${bl.anchor_text})`,
+              date: todayStr,
+              time: '10:00 AM',
+              status: 'pending',
+              is_recurring: false,
+              tags: ['Backlink', 'SEO'],
+              work_type: 'SEO Blog',
+              reminder_enabled: true,
+              backlink_id: bl.id
+            });
+          } else {
+            const currentTask = prevTasks[existingIdx];
+            if (currentTask.status !== 'pending' || currentTask.date !== todayStr) {
+              changed = true;
+              prevTasks[existingIdx] = {
+                ...currentTask,
+                status: 'pending',
+                date: todayStr
+              };
+            }
+          }
+        } else if (bl.status === 'live') {
+          if (existingIdx !== -1 && prevTasks[existingIdx].status !== 'done') {
+            changed = true;
+            prevTasks[existingIdx] = {
+              ...prevTasks[existingIdx],
+              status: 'done'
+            };
+          }
+        }
+      });
+
+      if (changed || tasksToAppend.length > 0) {
+        return [...tasksToAppend, ...prevTasks];
+      }
+      return prevTasks;
+    });
+  }, [backlinks]);
+
   // Auto-generate today's tasks from Active daily task templates
   useEffect(() => {
     const todayStr = new Date().toISOString().slice(0, 10);
