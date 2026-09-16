@@ -229,7 +229,6 @@ export type TabType =
   | 'weekly_report'
   | 'monthly_report'
   | 'work_log'
-  | 'gmb_seo'
   | 'instagram'
   | 'keywords'
   | 'recurring';

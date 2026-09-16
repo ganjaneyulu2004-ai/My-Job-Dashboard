@@ -14,7 +14,6 @@ import { CalendarTab } from './components/tabs/CalendarTab';
 import { WeeklyReportTab } from './components/tabs/WeeklyReportTab';
 import { MonthlyReportTab } from './components/tabs/MonthlyReportTab';
 import { DailyWorkLogTab } from './components/tabs/DailyWorkLogTab';
-import { GmbSeoTrackingTab } from './components/tabs/GmbSeoTrackingTab';
 import { InstagramTab } from './components/tabs/InstagramTab';
 import { KeywordBankTab } from './components/tabs/KeywordBankTab';
 import { RecurringTasksTab } from './components/tabs/RecurringTasksTab';
@@ -116,8 +115,6 @@ const DashboardContent: React.FC = () => {
         return <MonthlyReportTab />;
       case 'work_log':
         return <DailyWorkLogTab />;
-      case 'gmb_seo':
-        return <GmbSeoTrackingTab onOpenLogModal={handleOpenLogModal} />;
       case 'instagram':
         return <InstagramTab />;
       case 'keywords':
