@@ -110,7 +110,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={() => setIsClientDropdownOpen(!isClientDropdownOpen)}
             className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-slate-100/80 hover:bg-slate-200/80 border border-slate-200 text-slate-800 transition-all font-medium text-sm shadow-xs focus:ring-2 focus:ring-purple-500/30"
           >
-            {activeClientId === 'all' && isAdmin ? (
+            {activeClientId === 'all' ? (
               <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
                 ALL
               </div>
@@ -132,8 +132,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Active Client
               </div>
               <div className="font-bold text-slate-900 max-w-[150px] md:max-w-[200px] truncate leading-tight">
-                {activeClientId === 'all' && isAdmin
-                  ? '✨ All Clients (Combined)'
+                {activeClientId === 'all'
+                  ? (isAdmin ? '✨ All Clients (Combined)' : `✨ All Assigned Clients (${availableClients.length})`)
                   : availableClients.length === 0
                   ? 'No clients assigned'
                   : activeClient?.name || 'Select Client'}
@@ -153,29 +153,29 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Select Client Workspace
               </div>
 
-              {/* Show "All Clients" ONLY for Admin */}
-              {isAdmin && (
-                <>
-                  <button
-                    onClick={() => setActiveClientId('all')}
-                    className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between hover:bg-purple-50/60 transition-colors ${
-                      activeClientId === 'all' ? 'bg-purple-50 font-semibold text-purple-700' : 'text-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
-                        ALL
-                      </div>
-                      <div>
-                        <div className="text-sm font-bold text-slate-900">All Clients</div>
-                        <div className="text-xs text-slate-500">Combined Today & Upcoming view</div>
-                      </div>
+              {/* Show "All Clients" / "All Assigned Clients" option for all users */}
+              <button
+                onClick={() => setActiveClientId('all')}
+                className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between hover:bg-purple-50/60 transition-colors ${
+                  activeClientId === 'all' ? 'bg-purple-50 font-semibold text-purple-700' : 'text-slate-700'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                    ALL
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-slate-900">
+                      {isAdmin ? 'All Clients' : 'All Assigned Clients'}
                     </div>
-                    {activeClientId === 'all' && <Check className="w-4 h-4 text-purple-600" />}
-                  </button>
-                  <div className="my-1 border-t border-slate-100" />
-                </>
-              )}
+                    <div className="text-xs text-slate-500">
+                      {isAdmin ? 'Combined Today & Upcoming view' : `View tasks across all ${availableClients.length} assigned clients`}
+                    </div>
+                  </div>
+                </div>
+                {activeClientId === 'all' && <Check className="w-4 h-4 text-purple-600" />}
+              </button>
+              <div className="my-1 border-t border-slate-100" />
 
               <div className="max-h-60 overflow-y-auto py-1">
                 {availableClients.length === 0 ? (

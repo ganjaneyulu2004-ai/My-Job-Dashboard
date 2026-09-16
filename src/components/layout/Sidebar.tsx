@@ -26,11 +26,14 @@ interface SidebarItem {
 }
 
 export const Sidebar: React.FC = () => {
-  const { activeTab, setActiveTab, tasks, backlinks } = useApp();
+  const { activeTab, setActiveTab, getTodayTasks, backlinks, user, clients, assignedClients } = useApp();
 
-  // Calculate quick notification badges
-  const todayTaskCount = tasks.filter(t => t.date === new Date().toISOString().slice(0, 10) && t.status === 'pending').length;
-  const pendingBacklinkCount = backlinks.filter(b => b.status === 'pending').length;
+  const allowedClients = (!user || user.role === 'admin') ? clients : (assignedClients.length > 0 ? assignedClients : clients);
+  const allowedClientIds = allowedClients.map(c => c.id);
+
+  // Calculate quick notification badges using getTodayTasks('all') for 100% consistency
+  const todayTaskCount = getTodayTasks('all').filter(t => t.status === 'pending').length;
+  const pendingBacklinkCount = backlinks.filter(b => b.status === 'pending' && allowedClientIds.includes(b.client_id)).length;
 
   const sidebarItems: SidebarItem[] = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard, accentColor: 'bg-teal-600 text-white shadow-teal-500/20' },

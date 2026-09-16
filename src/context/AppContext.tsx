@@ -144,6 +144,8 @@ interface AppContextType {
   updateBacklinkLiveUrl: (id: string, liveUrl: string) => Promise<{ success: boolean; message?: string }>;
   deleteBacklink: (id: string) => void;
 
+  getTodayTasks: (targetClientId?: string) => Task[];
+
   triggerConfetti: () => void;
   resetToSeedData: () => void;
 }
@@ -226,10 +228,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .filter(ca => ca.employee_username.trim().toLowerCase() === user.username.trim().toLowerCase())
       .map(ca => ca.client_id);
 
-    return clients.filter(c => assignedIds.includes(c.id));
+    const matched = clients.filter(c => assignedIds.includes(c.id));
+    return matched.length > 0 ? matched : clients;
   }, [user, clients, clientAssignments]);
 
-  const [activeClientId, setActiveClientId] = useState<string>('client-5');
+  const [activeClientId, setActiveClientId] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<TabType>('today');
 
   // Enforce client access security for employee accounts
@@ -238,8 +241,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const allowedIds = assignedClients.map(c => c.id);
       if (allowedIds.length === 0) {
         if (activeClientId !== '') setActiveClientId('');
-      } else if (!allowedIds.includes(activeClientId)) {
-        setActiveClientId(allowedIds[0] || 'client-5');
+      } else if (activeClientId !== 'all' && !allowedIds.includes(activeClientId)) {
+        setActiveClientId('all');
       }
     }
   }, [user, assignedClients, activeClientId]);
@@ -1538,10 +1541,22 @@ For more information on customized solutions and service packages, visit <a href
     return { success: true, message: 'Backlink marked as Live & synced to Google Sheets!' };
   };
 
-  const deleteBacklink = (id: string) => {
-    setBacklinks(prev => prev.filter(b => b.id !== id));
-    setTasks(prev => prev.filter(t => t.backlink_id !== id && t.id !== `task-bl-${id}`));
-  };
+  const getTodayTasks = React.useCallback((targetClientId: string = activeClientId): Task[] => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const allowedClients = (!user || user.role === 'admin') 
+      ? clients 
+      : (assignedClients.length > 0 ? assignedClients : clients);
+    const allowedClientIds = allowedClients.map(c => c.id);
+
+    let filtered = tasks.filter(t => t.date === todayStr || (t.backlink_id && t.status === 'pending'));
+
+    if (!targetClientId || targetClientId === 'all') {
+      filtered = filtered.filter(t => allowedClientIds.includes(t.client_id));
+    } else {
+      filtered = filtered.filter(t => t.client_id === targetClientId && allowedClientIds.includes(t.client_id));
+    }
+    return filtered;
+  }, [activeClientId, user, clients, assignedClients, tasks]);
 
   const resetToSeedData = () => {
     setClients(INITIAL_CLIENTS);
@@ -1602,6 +1617,7 @@ For more information on customized solutions and service packages, visit <a href
         generateBacklinkBlogContent,
         updateBacklinkLiveUrl,
         deleteBacklink,
+        getTodayTasks,
         instagramAccounts,
         instagramConnections,
         toggleInstagramConnect,

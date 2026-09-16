@@ -30,6 +30,7 @@ export const TodayTab: React.FC = () => {
     clients,
     activeClientId,
     activeClient,
+    getTodayTasks,
     toggleTaskStatus,
     deleteTask,
     addTask,
@@ -65,13 +66,8 @@ export const TodayTab: React.FC = () => {
     year: 'numeric'
   });
 
-  // Filter tasks for Today (including all pending backlink tasks)
-  let todayTasks = tasks.filter(t => t.date === todayStr || (t.backlink_id && t.status === 'pending'));
-
-  // Scoped to active client if specific client chosen
-  if (activeClientId !== 'all') {
-    todayTasks = todayTasks.filter(t => t.client_id === activeClientId);
-  }
+  // Filter tasks for Today (including all pending backlink tasks across active client / assigned clients)
+  let todayTasks = getTodayTasks(activeClientId);
 
   // Apply global filters
   if (filters.selectedWorkType && filters.selectedWorkType !== 'all') {
@@ -145,8 +141,8 @@ export const TodayTab: React.FC = () => {
               {formattedToday}
             </h2>
             <p className="text-amber-100 text-sm mt-1">
-              {activeClientId === 'all'
-                ? 'Showing tasks across all active clients'
+              {activeClientId === 'all' || !activeClientId
+                ? 'Showing tasks across all assigned clients'
                 : `Managing daily work for ${activeClient?.name || 'Selected Client'}`}
             </p>
           </div>
