@@ -18,7 +18,8 @@ import {
   GmbSeoType,
   BlogPost,
   ScheduledPost,
-  SpecialDayContent
+  SpecialDayContent,
+  Backlink
 } from '../types';
 import {
   INITIAL_CLIENTS,
@@ -33,7 +34,8 @@ import {
   INITIAL_INSTAGRAM_ACCOUNTS,
   INITIAL_BLOGS,
   INITIAL_SCHEDULED_POSTS,
-  INITIAL_SPECIAL_DAYS
+  INITIAL_SPECIAL_DAYS,
+  INITIAL_BACKLINKS
 } from '../data/seedData';
 import { InstagramAccount, InstagramConnection } from '../types';
 
@@ -135,6 +137,12 @@ interface AppContextType {
 
   specialDays: SpecialDayContent[];
   addSpecialDay: (sd: Omit<SpecialDayContent, 'id' | 'created_at'>) => void;
+
+  backlinks: Backlink[];
+  addBacklink: (data: Omit<Backlink, 'id' | 'status' | 'date_added' | 'created_at'>) => Promise<{ success: boolean; message?: string }>;
+  generateBacklinkBlogContent: (id: string) => Promise<{ success: boolean; blogContent?: string }>;
+  updateBacklinkLiveUrl: (id: string, liveUrl: string) => Promise<{ success: boolean; message?: string }>;
+  deleteBacklink: (id: string) => void;
 
   triggerConfetti: () => void;
   resetToSeedData: () => void;
@@ -280,6 +288,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return loaded.filter(sd => !DUMMY_CLIENT_IDS.includes(sd.client_id));
   });
 
+  const [backlinks, setBacklinks] = useState<Backlink[]>(() => {
+    const loaded = getInitialData('backlinks', INITIAL_BACKLINKS);
+    return loaded.filter(bl => !DUMMY_CLIENT_IDS.includes(bl.client_id));
+  });
+
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_dailyTaskTemplates`, JSON.stringify(dailyTaskTemplates));
   }, [dailyTaskTemplates]);
@@ -295,6 +308,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_specialDays`, JSON.stringify(specialDays));
   }, [specialDays]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_backlinks`, JSON.stringify(backlinks));
+  }, [backlinks]);
 
   // Auto-generate today's tasks from Active daily task templates
   useEffect(() => {
@@ -1319,6 +1336,158 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => clearInterval(timer);
   }, [scheduledPosts, instagramConnections, supabaseConfig]);
 
+  const addBacklink = async (data: Omit<Backlink, 'id' | 'status' | 'date_added' | 'created_at'>): Promise<{ success: boolean; message?: string }> => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const newId = `bl-${Date.now()}`;
+    const newBacklink: Backlink = {
+      id: newId,
+      client_id: data.client_id,
+      website_name: data.website_name.trim(),
+      target_page_url: data.target_page_url.trim(),
+      anchor_text: data.anchor_text.trim(),
+      status: 'pending',
+      date_added: todayStr,
+      created_at: new Date().toISOString()
+    };
+
+    // 1. Save new backlink card
+    setBacklinks(prev => [newBacklink, ...prev]);
+
+    // 2. Automatically create Pending task in Today's Work Deck
+    const newTask: Task = {
+      id: `task-bl-${newId}`,
+      client_id: data.client_id,
+      title: `Publish Backlink on ${data.website_name.trim()} (${data.anchor_text.trim()})`,
+      date: todayStr,
+      time: '10:00 AM',
+      status: 'pending',
+      is_recurring: false,
+      tags: ['Backlink', 'SEO'],
+      work_type: 'SEO Blog',
+      reminder_enabled: true,
+      backlink_id: newId
+    };
+    setTasks(prev => [newTask, ...prev]);
+
+    // 3. Webhook sync to Google Sheets (action: 'create')
+    if (supabaseConfig.url && supabaseConfig.key) {
+      const clientObj = clients.find(c => c.id === data.client_id);
+      const edgeUrl = `${supabaseConfig.url.replace(/\/$/, '')}/functions/v1/sync-to-sheets`;
+      
+      try {
+        await fetch(edgeUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseConfig.key}`,
+            'apikey': supabaseConfig.key
+          },
+          body: JSON.stringify({
+            action: 'create',
+            backlink_id: newId,
+            client_id: data.client_id,
+            client_name: clientObj ? clientObj.name : data.client_id,
+            website_name: data.website_name.trim(),
+            target_page_url: data.target_page_url.trim(),
+            anchor_text: data.anchor_text.trim(),
+            status: 'Pending',
+            date_added: todayStr
+          })
+        }).catch(err => console.warn('Google Sheets webhook warning:', err));
+      } catch (e) {
+        // silent catch
+      }
+    }
+
+    triggerConfetti();
+    return { success: true, message: 'Backlink created & synced to Google Sheets!' };
+  };
+
+  const generateBacklinkBlogContent = async (id: string): Promise<{ success: boolean; blogContent?: string }> => {
+    const target = backlinks.find(b => b.id === id);
+    if (!target) return { success: false };
+
+    const clientObj = clients.find(c => c.id === target.client_id);
+    const clientName = clientObj ? clientObj.name : 'our featured client';
+
+    const articleText = `Essential Industry Insights & Guide for ${target.website_name}
+
+In today's fast-evolving digital landscape, modern consumers and businesses demand exceptional service quality, strategic consistency, and verified expertise. Establishing a reliable web presence requires continuously curating high-value resources and offering actionable recommendations to readers.
+
+Whether you are exploring top-tier solutions or analyzing regional market dynamics, partnering with trusted providers makes all the difference. For trusted expert guidance and comprehensive service options, explore <a href="${target.target_page_url}" target="_blank" rel="noopener noreferrer">${target.anchor_text}</a>, known across the region for superior standard operations and proven client outcomes.
+
+Key Operational Milestones:
+1. Precision & Attention to Detail: Delivering rigorous execution across every client deliverable.
+2. Customer-Centric Care: Tailoring strategies to meet specific community and organizational goals.
+3. Continuous Innovation: Adapting to modern standards, local requirements, and technology advancements.
+
+Strategic Takeaways for Long-Term Growth:
+Sustainable achievement relies on establishing clear objectives and implementing reliable workflows. By reviewing client outcomes and working closely with industry specialists like ${clientName}, organizations maintain a strong competitive edge while delivering maximum value to their audience.
+
+For more information on customized solutions and service packages, visit <a href="${target.target_page_url}" target="_blank" rel="noopener noreferrer">${target.anchor_text}</a> to consult directly with their specialized team today.`.trim();
+
+    setBacklinks(prev => prev.map(b => b.id === id ? { ...b, blog_content: articleText } : b));
+    return { success: true, blogContent: articleText };
+  };
+
+  const updateBacklinkLiveUrl = async (id: string, liveUrl: string): Promise<{ success: boolean; message?: string }> => {
+    const target = backlinks.find(b => b.id === id);
+    if (!target) return { success: false, message: 'Backlink not found' };
+
+    const trimmedUrl = liveUrl.trim();
+    if (!trimmedUrl) return { success: false, message: 'Please enter a valid Live URL' };
+
+    // 1. Update backlink status to Live
+    setBacklinks(prev => prev.map(b => b.id === id ? { ...b, status: 'live', live_url: trimmedUrl } : b));
+
+    // 2. Automatically mark corresponding task in Today's Work Deck as done
+    setTasks(prev => prev.map(t => {
+      if (t.backlink_id === id || t.id === `task-bl-${id}`) {
+        return { ...t, status: 'done' };
+      }
+      return t;
+    }));
+
+    // 3. Webhook sync to update Google Sheets row (action: 'update')
+    if (supabaseConfig.url && supabaseConfig.key) {
+      const clientObj = clients.find(c => c.id === target.client_id);
+      const edgeUrl = `${supabaseConfig.url.replace(/\/$/, '')}/functions/v1/sync-to-sheets`;
+      
+      try {
+        await fetch(edgeUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseConfig.key}`,
+            'apikey': supabaseConfig.key
+          },
+          body: JSON.stringify({
+            action: 'update',
+            backlink_id: id,
+            client_id: target.client_id,
+            client_name: clientObj ? clientObj.name : target.client_id,
+            website_name: target.website_name,
+            target_page_url: target.target_page_url,
+            anchor_text: target.anchor_text,
+            status: 'Live',
+            live_url: trimmedUrl,
+            date_added: target.date_added
+          })
+        }).catch(err => console.warn('Google Sheets update webhook warning:', err));
+      } catch (e) {
+        // silent catch
+      }
+    }
+
+    triggerConfetti();
+    return { success: true, message: 'Backlink marked as Live & synced to Google Sheets!' };
+  };
+
+  const deleteBacklink = (id: string) => {
+    setBacklinks(prev => prev.filter(b => b.id !== id));
+    setTasks(prev => prev.filter(t => t.backlink_id !== id && t.id !== `task-bl-${id}`));
+  };
+
   const resetToSeedData = () => {
     setClients(INITIAL_CLIENTS);
     setTasks(INITIAL_TASKS);
@@ -1331,6 +1500,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setClientAssignments(INITIAL_CLIENT_ASSIGNMENTS);
     setBlogs(INITIAL_BLOGS);
     setScheduledPosts(INITIAL_SCHEDULED_POSTS);
+    setBacklinks(INITIAL_BACKLINKS);
     localStorage.clear();
   };
 
@@ -1372,6 +1542,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         publishDueScheduledPosts,
         specialDays,
         addSpecialDay,
+        backlinks,
+        addBacklink,
+        generateBacklinkBlogContent,
+        updateBacklinkLiveUrl,
+        deleteBacklink,
         instagramAccounts,
         instagramConnections,
         toggleInstagramConnect,

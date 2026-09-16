@@ -48,6 +48,7 @@ export interface Task {
   reminder_enabled?: boolean;
   template_id?: string;
   assigned_employee?: string;
+  backlink_id?: string;
 }
 
 export interface WorkLog {
@@ -220,6 +221,21 @@ export interface InstagramAccount {
   top_post?: InstagramPost;
 }
 
+export type BacklinkStatus = 'pending' | 'live';
+
+export interface Backlink {
+  id: string;
+  client_id: string;
+  website_name: string;
+  target_page_url: string;
+  anchor_text: string;
+  blog_content?: string;
+  status: BacklinkStatus;
+  live_url?: string;
+  date_added: string; // YYYY-MM-DD
+  created_at: string; // ISO string
+}
+
 export type TabType = 
   | 'overview'
   | 'today'
@@ -229,6 +245,7 @@ export type TabType =
   | 'weekly_report'
   | 'monthly_report'
   | 'work_log'
+  | 'backlinks'
   | 'instagram'
   | 'keywords'
   | 'recurring';

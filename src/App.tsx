@@ -9,6 +9,7 @@ import { DailyReminderBanner } from './components/common/DailyReminderBanner';
 import { OverviewTab } from './components/tabs/OverviewTab';
 import { TodayTab } from './components/tabs/TodayTab';
 import { ContentVaultTab } from './components/tabs/ContentVaultTab';
+import { BacklinksTab } from './components/tabs/BacklinksTab';
 import { UpcomingTab } from './components/tabs/UpcomingTab';
 import { CalendarTab } from './components/tabs/CalendarTab';
 import { WeeklyReportTab } from './components/tabs/WeeklyReportTab';
@@ -105,6 +106,8 @@ const DashboardContent: React.FC = () => {
         return <TodayTab />;
       case 'content_vault':
         return <ContentVaultTab />;
+      case 'backlinks':
+        return <BacklinksTab />;
       case 'upcoming':
         return <UpcomingTab />;
       case 'calendar':

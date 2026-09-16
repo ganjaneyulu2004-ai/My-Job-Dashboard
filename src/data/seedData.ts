@@ -1,4 +1,6 @@
-import { Client, Task, WorkLog, GmbSeoEntry, Keyword, Goal, RecurringTaskTemplate, DailyTaskTemplate, InstagramAccount, ClientAssignment, BlogPost, ScheduledPost, SpecialDayContent } from '../types';
+import { Client, Task, WorkLog, GmbSeoEntry, Keyword, Goal, RecurringTaskTemplate, DailyTaskTemplate, InstagramAccount, ClientAssignment, BlogPost, ScheduledPost, SpecialDayContent, Backlink } from '../types';
+
+export const INITIAL_BACKLINKS: Backlink[] = [];
 
 export const INITIAL_SPECIAL_DAYS: SpecialDayContent[] = [
   {

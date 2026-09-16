@@ -7,6 +7,7 @@ import {
   BarChart3,
   PieChart,
   FileText,
+  Link2,
   Instagram,
   KeyRound,
   Repeat,
@@ -25,15 +26,17 @@ interface SidebarItem {
 }
 
 export const Sidebar: React.FC = () => {
-  const { activeTab, setActiveTab, tasks } = useApp();
+  const { activeTab, setActiveTab, tasks, backlinks } = useApp();
 
   // Calculate quick notification badges
   const todayTaskCount = tasks.filter(t => t.date === new Date().toISOString().slice(0, 10) && t.status === 'pending').length;
+  const pendingBacklinkCount = backlinks.filter(b => b.status === 'pending').length;
 
   const sidebarItems: SidebarItem[] = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard, accentColor: 'bg-teal-600 text-white shadow-teal-500/20' },
     { id: 'today', label: 'Today Work', icon: Sun, accentColor: 'bg-amber-500 text-white shadow-amber-500/20', badge: todayTaskCount > 0 ? `${todayTaskCount}` : undefined },
     { id: 'content_vault', label: 'Content Vault', icon: Database, accentColor: 'bg-purple-600 text-white shadow-purple-500/20' },
+    { id: 'backlinks', label: 'Backlinks', icon: Link2, accentColor: 'bg-indigo-600 text-white shadow-indigo-500/20', badge: pendingBacklinkCount > 0 ? `${pendingBacklinkCount}` : undefined },
     { id: 'upcoming', label: 'Upcoming Works', icon: Clock, accentColor: 'bg-agency-teal text-white shadow-teal-500/20' },
     { id: 'calendar', label: 'Monthly Calendar', icon: Calendar, accentColor: 'bg-agency-purple text-white shadow-purple-500/20' },
     { id: 'weekly_report', label: 'Weekly Report', icon: BarChart3, accentColor: 'bg-indigo-600 text-white shadow-indigo-500/20' },
