@@ -232,6 +232,8 @@ export interface Backlink {
   blog_content?: string;
   status: BacklinkStatus;
   live_url?: string;
+  sheet_row_id?: string;
+  completed_at?: string;
   date_added: string; // YYYY-MM-DD
   created_at: string; // ISO string
 }

@@ -1394,16 +1394,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => clearInterval(timer);
   }, [scheduledPosts, instagramConnections, supabaseConfig]);
 
+  const buildBacklinkArticle = (websiteName: string, targetUrl: string, anchorText: string, clientName?: string) => {
+    const brand = clientName || 'our featured client';
+    return `Essential Industry Insights & Guide for ${websiteName.trim()}
+
+In today's fast-evolving digital landscape, modern consumers and businesses demand exceptional service quality, strategic consistency, and verified expertise. Establishing a reliable web presence requires continuously curating high-value resources and offering actionable recommendations to readers.
+
+Whether you are exploring top-tier solutions or analyzing regional market dynamics, partnering with trusted providers makes all the difference. For trusted expert guidance and comprehensive service options, explore <a href="${targetUrl.trim()}" target="_blank" rel="noopener noreferrer">${anchorText.trim()}</a>, known across the region for superior standard operations and proven client outcomes.
+
+Key Operational Milestones:
+1. Precision & Attention to Detail: Delivering rigorous execution across every client deliverable.
+2. Customer-Centric Care: Tailoring strategies to meet specific community and organizational goals.
+3. Continuous Innovation: Adapting to modern standards, local requirements, and technology advancements.
+
+Strategic Takeaways for Long-Term Growth:
+Sustainable achievement relies on establishing clear objectives and implementing reliable workflows. By reviewing client outcomes and working closely with industry specialists like ${brand}, organizations maintain a strong competitive edge while delivering maximum value to their audience.
+
+For more information on customized solutions and service packages, visit <a href="${targetUrl.trim()}" target="_blank" rel="noopener noreferrer">${anchorText.trim()}</a> to consult directly with their specialized team today.`.trim();
+  };
+
   const addBacklink = async (data: Omit<Backlink, 'id' | 'status' | 'date_added' | 'created_at'>): Promise<{ success: boolean; message?: string }> => {
     const todayStr = new Date().toISOString().slice(0, 10);
     const newId = `bl-${Date.now()}`;
+    const clientObj = clients.find(c => c.id === data.client_id);
+    const clientName = clientObj ? clientObj.name : data.client_id;
+    
+    // Automatically generate AI blog article with natural anchor text link immediately upon creation
+    const autoArticle = buildBacklinkArticle(data.website_name, data.target_page_url, data.anchor_text, clientName);
+
     const newBacklink: Backlink = {
       id: newId,
       client_id: data.client_id,
       website_name: data.website_name.trim(),
       target_page_url: data.target_page_url.trim(),
       anchor_text: data.anchor_text.trim(),
+      blog_content: autoArticle,
       status: 'pending',
+      sheet_row_id: newId,
       date_added: todayStr,
       created_at: new Date().toISOString()
     };
@@ -1429,11 +1456,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // 3. Webhook sync to Google Sheets (action: 'create')
     if (supabaseConfig.url && supabaseConfig.key) {
-      const clientObj = clients.find(c => c.id === data.client_id);
       const edgeUrl = `${supabaseConfig.url.replace(/\/$/, '')}/functions/v1/sync-to-sheets`;
       
       try {
-        await fetch(edgeUrl, {
+        const resp = await fetch(edgeUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1443,15 +1469,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           body: JSON.stringify({
             action: 'create',
             backlink_id: newId,
+            sheet_row_id: newId,
             client_id: data.client_id,
-            client_name: clientObj ? clientObj.name : data.client_id,
+            client_name: clientName,
             website_name: data.website_name.trim(),
             target_page_url: data.target_page_url.trim(),
             anchor_text: data.anchor_text.trim(),
+            blog_content: autoArticle,
             status: 'Pending',
+            live_url: '',
             date_added: todayStr
           })
-        }).catch(err => console.warn('Google Sheets webhook warning:', err));
+        });
+        const resData = await resp.json().catch(() => null);
+        if (resData && (resData.sheet_row_id || resData.row_id)) {
+          const assignedRowId = String(resData.sheet_row_id || resData.row_id);
+          setBacklinks(prev => prev.map(b => b.id === newId ? { ...b, sheet_row_id: assignedRowId } : b));
+        }
       } catch (e) {
         // silent catch
       }
@@ -1468,21 +1502,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const clientObj = clients.find(c => c.id === target.client_id);
     const clientName = clientObj ? clientObj.name : 'our featured client';
 
-    const articleText = `Essential Industry Insights & Guide for ${target.website_name}
-
-In today's fast-evolving digital landscape, modern consumers and businesses demand exceptional service quality, strategic consistency, and verified expertise. Establishing a reliable web presence requires continuously curating high-value resources and offering actionable recommendations to readers.
-
-Whether you are exploring top-tier solutions or analyzing regional market dynamics, partnering with trusted providers makes all the difference. For trusted expert guidance and comprehensive service options, explore <a href="${target.target_page_url}" target="_blank" rel="noopener noreferrer">${target.anchor_text}</a>, known across the region for superior standard operations and proven client outcomes.
-
-Key Operational Milestones:
-1. Precision & Attention to Detail: Delivering rigorous execution across every client deliverable.
-2. Customer-Centric Care: Tailoring strategies to meet specific community and organizational goals.
-3. Continuous Innovation: Adapting to modern standards, local requirements, and technology advancements.
-
-Strategic Takeaways for Long-Term Growth:
-Sustainable achievement relies on establishing clear objectives and implementing reliable workflows. By reviewing client outcomes and working closely with industry specialists like ${clientName}, organizations maintain a strong competitive edge while delivering maximum value to their audience.
-
-For more information on customized solutions and service packages, visit <a href="${target.target_page_url}" target="_blank" rel="noopener noreferrer">${target.anchor_text}</a> to consult directly with their specialized team today.`.trim();
+    const articleText = buildBacklinkArticle(target.website_name, target.target_page_url, target.anchor_text, clientName);
 
     setBacklinks(prev => prev.map(b => b.id === id ? { ...b, blog_content: articleText } : b));
     return { success: true, blogContent: articleText };
@@ -1495,8 +1515,12 @@ For more information on customized solutions and service packages, visit <a href
     const trimmedUrl = liveUrl.trim();
     if (!trimmedUrl) return { success: false, message: 'Please enter a valid Live URL' };
 
+    const nowIso = new Date().toISOString();
+    const todayStr = nowIso.slice(0, 10);
+    const rowIdToMatch = target.sheet_row_id || target.id;
+
     // 1. Update backlink status to Live
-    setBacklinks(prev => prev.map(b => b.id === id ? { ...b, status: 'live', live_url: trimmedUrl } : b));
+    setBacklinks(prev => prev.map(b => b.id === id ? { ...b, status: 'live', live_url: trimmedUrl, completed_at: nowIso } : b));
 
     // 2. Automatically mark corresponding task in Today's Work Deck as done
     setTasks(prev => prev.map(t => {
@@ -1506,7 +1530,7 @@ For more information on customized solutions and service packages, visit <a href
       return t;
     }));
 
-    // 3. Webhook sync to update Google Sheets row (action: 'update')
+    // 3. Webhook sync to update Google Sheets row (action: 'update') matching sheet_row_id
     if (supabaseConfig.url && supabaseConfig.key) {
       const clientObj = clients.find(c => c.id === target.client_id);
       const edgeUrl = `${supabaseConfig.url.replace(/\/$/, '')}/functions/v1/sync-to-sheets`;
@@ -1522,14 +1546,18 @@ For more information on customized solutions and service packages, visit <a href
           body: JSON.stringify({
             action: 'update',
             backlink_id: id,
+            sheet_row_id: rowIdToMatch,
             client_id: target.client_id,
             client_name: clientObj ? clientObj.name : target.client_id,
             website_name: target.website_name,
             target_page_url: target.target_page_url,
             anchor_text: target.anchor_text,
+            blog_content: target.blog_content || '',
             status: 'Live',
             live_url: trimmedUrl,
-            date_added: target.date_added
+            date_added: target.date_added,
+            date_live: todayStr,
+            completed_at: nowIso
           })
         }).catch(err => console.warn('Google Sheets update webhook warning:', err));
       } catch (e) {
