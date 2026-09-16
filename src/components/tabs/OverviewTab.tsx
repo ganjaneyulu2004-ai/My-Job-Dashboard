@@ -301,7 +301,7 @@ export const OverviewTab: React.FC = () => {
                 </div>
 
                 {/* Tasks List inside Group */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   {groupTasks.map(task => {
                     const taskClient = clients.find(c => c.id === task.client_id);
                     const isDone = task.status === 'done';

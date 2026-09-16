@@ -85,7 +85,7 @@ export const RecurringTasksTab: React.FC = () => {
       </div>
 
       {/* Rules List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {scopedRules.map(rule => {
           const client = clients.find(c => c.id === rule.client_id);
           return (

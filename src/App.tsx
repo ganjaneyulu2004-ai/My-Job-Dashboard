@@ -14,6 +14,7 @@ import { CalendarTab } from './components/tabs/CalendarTab';
 import { WeeklyReportTab } from './components/tabs/WeeklyReportTab';
 import { MonthlyReportTab } from './components/tabs/MonthlyReportTab';
 import { DailyWorkLogTab } from './components/tabs/DailyWorkLogTab';
+import { GmbSeoTrackingTab } from './components/tabs/GmbSeoTrackingTab';
 import { InstagramTab } from './components/tabs/InstagramTab';
 import { KeywordBankTab } from './components/tabs/KeywordBankTab';
 import { RecurringTasksTab } from './components/tabs/RecurringTasksTab';
@@ -23,6 +24,7 @@ import { LoginScreen } from './components/auth/LoginScreen';
 // Modals
 import { AddClientModal } from './components/modals/AddClientModal';
 import { AddTaskModal } from './components/modals/AddTaskModal';
+import { LogGmbSeoModal } from './components/modals/LogGmbSeoModal';
 import { SupabaseConfigModal } from './components/modals/SupabaseConfigModal';
 import { SettingsModal } from './components/modals/SettingsModal';
 
@@ -86,8 +88,15 @@ const DashboardContent: React.FC = () => {
 
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
+  const [isLogGmbSeoOpen, setIsLogGmbSeoOpen] = useState(false);
+  const [selectedGmbEntryToEdit, setSelectedGmbEntryToEdit] = useState<any>(null);
   const [isSupabaseOpen, setIsSupabaseOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const handleOpenLogModal = (entry?: any) => {
+    setSelectedGmbEntryToEdit(entry || null);
+    setIsLogGmbSeoOpen(true);
+  };
 
   const renderActiveTab = () => {
     switch (activeTab) {
@@ -107,6 +116,8 @@ const DashboardContent: React.FC = () => {
         return <MonthlyReportTab />;
       case 'work_log':
         return <DailyWorkLogTab />;
+      case 'gmb_seo':
+        return <GmbSeoTrackingTab onOpenLogModal={handleOpenLogModal} />;
       case 'instagram':
         return <InstagramTab />;
       case 'keywords':
@@ -158,9 +169,13 @@ const DashboardContent: React.FC = () => {
         onClose={() => setIsAddTaskOpen(false)}
       />
 
-      <SupabaseConfigModal
-        isOpen={isSupabaseOpen}
-        onClose={() => setIsSupabaseOpen(false)}
+      <LogGmbSeoModal
+        isOpen={isLogGmbSeoOpen}
+        onClose={() => {
+          setIsLogGmbSeoOpen(false);
+          setSelectedGmbEntryToEdit(null);
+        }}
+        entryToEdit={selectedGmbEntryToEdit}
       />
 
       <SettingsModal
