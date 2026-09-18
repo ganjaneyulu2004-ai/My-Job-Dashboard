@@ -118,7 +118,7 @@ export interface RecurringTaskTemplate {
   recurrence_days?: string[];
   work_type: WorkType;
   tags: string[];
-  time: string;
+  time?: string;
   active: boolean;
 }
 

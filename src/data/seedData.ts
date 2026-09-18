@@ -325,8 +325,7 @@ export const INITIAL_RECURRING_TASKS: RecurringTaskTemplate[] = [
     recurrence: 'weekly',
     work_type: 'GMB Post',
     tags: ['GMB', 'Weekly'],
-    time: '09:30 AM',
-    active: true
+    active: false
   },
   {
     id: 'rec-2',
@@ -335,8 +334,7 @@ export const INITIAL_RECURRING_TASKS: RecurringTaskTemplate[] = [
     recurrence: 'weekly',
     work_type: 'Social Media',
     tags: ['Social', 'Safari'],
-    time: '11:00 AM',
-    active: true
+    active: false
   }
 ];
 
@@ -348,10 +346,9 @@ export const INITIAL_DAILY_TASK_TEMPLATES: DailyTaskTemplate[] = [
     title: 'Daily School Admissions & GMB Offer Post',
     assigned_employee: 'Subash',
     client_id: 'client-5',
-    time: '09:30 AM',
     work_type: 'GMB Post',
     recurrence: 'daily',
-    active: true,
+    active: false,
     created_at: '2026-09-01'
   },
   {
@@ -359,10 +356,9 @@ export const INITIAL_DAILY_TASK_TEMPLATES: DailyTaskTemplate[] = [
     title: 'Google Business Review Monitoring & Response',
     assigned_employee: 'Subash',
     client_id: 'all',
-    time: '11:00 AM',
     work_type: 'Review Response',
     recurrence: 'daily',
-    active: true,
+    active: false,
     created_at: '2026-09-01'
   },
   {
@@ -370,10 +366,9 @@ export const INITIAL_DAILY_TASK_TEMPLATES: DailyTaskTemplate[] = [
     title: 'Resort Inquiry & WhatsApp Support',
     assigned_employee: 'Subash',
     client_id: 'client-6',
-    time: '04:00 PM',
     work_type: 'General',
     recurrence: 'daily',
-    active: true,
+    active: false,
     created_at: '2026-09-01'
   }
 ];

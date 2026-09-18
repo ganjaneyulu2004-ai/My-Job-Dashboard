@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Repeat, Plus, CheckCircle2, Clock, Trash2, Power, Sparkles } from 'lucide-react';
+import { Repeat, Plus, Trash2, Power } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { WorkType, RecurrenceRule } from '../../types';
+import { WorkType, RecurrenceRule, RecurringTaskTemplate } from '../../types';
 
 const DAYS_OF_WEEK = [
   { id: 'sun', label: 'Sun' },
@@ -14,16 +14,42 @@ const DAYS_OF_WEEK = [
 ];
 
 export const RecurringTasksTab: React.FC = () => {
-  const { recurringTasks, activeClientId, activeClient, clients, addRecurringTask, toggleRecurringTask, deleteRecurringTask } = useApp();
+  const {
+    user,
+    recurringTasks,
+    activeClientId,
+    activeClient,
+    clients,
+    assignedClients,
+    addRecurringTask,
+    toggleRecurringTask,
+    deleteRecurringTask
+  } = useApp();
+
+  const availableClients = user?.role === 'admin' ? clients : (assignedClients.length > 0 ? assignedClients : clients);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<RecurringTaskTemplate | null>(null);
+
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [title, setTitle] = useState('');
   const [recurrence, setRecurrence] = useState<RecurrenceRule>('weekly');
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [showDaysError, setShowDaysError] = useState(false);
   const [workType, setWorkType] = useState<WorkType>('GMB Post');
-  const [time, setTime] = useState('09:30 AM');
+
+  const openAddModal = () => {
+    const initialClient = activeClientId !== 'all'
+      ? activeClientId
+      : (availableClients[0]?.id || '');
+    setSelectedClientId(initialClient);
+    setTitle('');
+    setRecurrence('weekly');
+    setSelectedDays([]);
+    setShowDaysError(false);
+    setWorkType('GMB Post');
+    setIsAddModalOpen(true);
+  };
 
   // Scoped recurring rules
   let scopedRules = recurringTasks;
@@ -31,24 +57,43 @@ export const RecurringTasksTab: React.FC = () => {
     scopedRules = scopedRules.filter(r => r.client_id === activeClientId);
   }
 
+  // Group scoped rules by client
+  const rulesByClientMap = scopedRules.reduce((acc, rule) => {
+    const cid = rule.client_id;
+    if (!acc[cid]) {
+      acc[cid] = [];
+    }
+    acc[cid].push(rule);
+    return acc;
+  }, {} as Record<string, RecurringTaskTemplate[]>);
+
+  // Get array of client entries to render
+  const clientGroups = Object.entries(rulesByClientMap).map(([cid, rules]) => {
+    const clientObj = clients.find(c => c.id === cid);
+    return {
+      clientId: cid,
+      clientName: clientObj ? clientObj.name : 'Unknown Client',
+      clientColor: clientObj?.avatar_color || '#64748b',
+      rules
+    };
+  });
+
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || !selectedClientId) return;
 
     if (recurrence === 'custom' && selectedDays.length === 0) {
       setShowDaysError(true);
       return;
     }
 
-    const clientIdToUse = activeClientId === 'all' ? clients[0]?.id || 'client-1' : activeClientId;
     addRecurringTask({
-      client_id: clientIdToUse,
+      client_id: selectedClientId,
       title: title.trim(),
       recurrence,
       recurrence_days: recurrence === 'custom' ? selectedDays : undefined,
       work_type: workType,
-      tags: ['Recurring', recurrence],
-      time
+      tags: ['Recurring', recurrence]
     });
 
     setTitle('');
@@ -72,84 +117,126 @@ export const RecurringTasksTab: React.FC = () => {
           </h2>
           <p className="text-orange-100 text-sm mt-1">
             {activeClientId === 'all'
-              ? 'Active daily, weekly & monthly repeating schedules across all clients'
+              ? 'Active daily, weekly & monthly repeating schedules grouped by client'
               : `Recurring rules for ${activeClient?.name}`}
           </p>
         </div>
 
         <button
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={openAddModal}
           className="px-4 py-2.5 rounded-full bg-white text-orange-900 font-bold text-xs flex items-center gap-1.5 shadow-md hover:bg-orange-50 transition-all shrink-0 cursor-pointer"
         >
           <Plus className="w-4 h-4" /> Create Recurring Rule
         </button>
       </div>
 
-      {/* Rules List */}
-      <div className="grid grid-cols-1 gap-4">
-        {scopedRules.map(rule => {
-          const client = clients.find(c => c.id === rule.client_id);
-          return (
-            <div
-              key={rule.id}
-              className={`bg-white rounded-3xl p-5 border shadow-card transition-all flex flex-col justify-between space-y-4 ${
-                rule.active ? 'border-slate-200 hover:border-orange-400' : 'border-slate-100 opacity-60 bg-slate-50'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    {activeClientId === 'all' && client && (
-                      <span
-                        className="px-2 py-0.5 rounded-md text-[10px] font-bold text-white shrink-0"
-                        style={{ backgroundColor: client.avatar_color }}
-                      >
-                        {client.name}
-                      </span>
-                    )}
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-orange-100 text-orange-800">
-                      🔄 {rule.recurrence === 'custom' && rule.recurrence_days && rule.recurrence_days.length > 0
-                        ? rule.recurrence_days.map(d => d.slice(0, 3).toUpperCase()).join(', ')
-                        : rule.recurrence}
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-purple-100 text-purple-700">
-                      {rule.work_type}
-                    </span>
-                  </div>
-
-                  <h4 className="font-extrabold text-slate-900 text-base">{rule.title}</h4>
-                  <p className="text-xs text-slate-500 font-semibold mt-0.5">Auto-populates at: ⏰ {rule.time}</p>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => toggleRecurringTask(rule.id)}
-                    className={`p-2 rounded-2xl transition-all cursor-pointer ${
-                      rule.active ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
-                    }`}
-                    title={rule.active ? 'Rule Active (Click to pause)' : 'Rule Paused (Click to activate)'}
-                  >
-                    <Power className="w-4 h-4" />
-                  </button>
-
-                  <button
-                    onClick={() => setDeleteTarget(rule)}
-                    className="p-2 rounded-2xl bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-700 transition-all cursor-pointer"
-                    title="Delete Recurring Task Template"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+      {/* Rules List Grouped by Client */}
+      {clientGroups.length === 0 ? (
+        <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm space-y-3">
+          <div className="w-14 h-14 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto">
+            <Repeat className="w-7 h-7" />
+          </div>
+          <h3 className="font-extrabold text-lg text-slate-800">No Recurring Task Rules Set</h3>
+          <p className="text-sm text-slate-500 max-w-md mx-auto">
+            Create automated recurring rules to auto-populate daily and weekly task checklists for your clients.
+          </p>
+          <button
+            onClick={openAddModal}
+            className="px-5 py-2.5 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow-md transition-all inline-flex items-center gap-2 cursor-pointer mt-2"
+          >
+            <Plus className="w-4 h-4" /> Create Recurring Rule Now
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {clientGroups.map(group => (
+            <div key={group.clientId} className="space-y-4">
+              {/* Client Group Header */}
+              <div className="flex items-center justify-between border-b border-slate-200/80 pb-2.5 px-1">
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs"
+                    style={{ backgroundColor: group.clientColor }}
+                  />
+                  <h3 className="font-extrabold text-slate-900 text-lg tracking-tight">
+                    {group.clientName}
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
+                    {group.rules.length} {group.rules.length === 1 ? 'Rule' : 'Rules'}
+                  </span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-semibold text-slate-500">
-                <span>Status: <strong className={rule.active ? 'text-emerald-600' : 'text-slate-400'}>{rule.active ? 'Active' : 'Paused'}</strong></span>
-                <span className="text-slate-400">Auto-Generates to Today</span>
+              {/* Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {group.rules.map(rule => (
+                  <div
+                    key={rule.id}
+                    className={`bg-white rounded-3xl p-5 border shadow-card transition-all flex flex-col justify-between space-y-4 ${
+                      rule.active
+                        ? 'border-slate-200 hover:border-orange-400'
+                        : 'border-amber-200/80 bg-amber-50/30 opacity-80'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-orange-100 text-orange-800">
+                            🔄 {rule.recurrence === 'custom' && rule.recurrence_days && rule.recurrence_days.length > 0
+                              ? rule.recurrence_days.map(d => d.slice(0, 3).toUpperCase()).join(', ')
+                              : rule.recurrence}
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-purple-100 text-purple-700">
+                            {rule.work_type}
+                          </span>
+                        </div>
+
+                        <h4 className="font-extrabold text-slate-900 text-base">{rule.title}</h4>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => toggleRecurringTask(rule.id)}
+                          className={`p-2 rounded-2xl transition-all cursor-pointer ${
+                            rule.active
+                              ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                              : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                          }`}
+                          title={rule.active ? 'Rule Active (Click to pause)' : 'Rule Paused (Click to activate)'}
+                        >
+                          <Power className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => setDeleteTarget(rule)}
+                          className="p-2 rounded-2xl bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-700 transition-all cursor-pointer"
+                          title="Delete Recurring Task Template"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs font-semibold">
+                      <div>
+                        {rule.active ? (
+                          <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1.5 inline-flex">
+                            🟢 Active (Auto-Generates to Today)
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 flex items-center gap-1.5 inline-flex">
+                            ⏸️ Not auto-generating (Paused)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Confirmation Dialog for Delete */}
       {deleteTarget && (() => {
@@ -207,12 +294,31 @@ export const RecurringTasksTab: React.FC = () => {
           <form onSubmit={handleAddSubmit} className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-extrabold text-lg text-slate-900">New Recurring Task Template</h3>
-              <button type="button" onClick={() => setIsAddModalOpen(false)} className="text-slate-400">✕</button>
+              <button type="button" onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-sm font-bold">✕</button>
+            </div>
+
+            {/* Mandatory Single Client Selection */}
+            <div>
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Client Account <span className="text-rose-500">*</span>
+              </label>
+              <select
+                required
+                value={selectedClientId}
+                onChange={(e) => setSelectedClientId(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800"
+              >
+                {availableClients.map(client => (
+                  <option key={client.id} value={client.id}>
+                    {client.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
               <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                Task Title
+                Task Title <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -305,18 +411,6 @@ export const RecurringTasksTab: React.FC = () => {
               </div>
             )}
 
-            <div>
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                Default Time
-              </label>
-              <input
-                type="text"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 text-center"
-              />
-            </div>
-
             <div className="pt-2 border-t border-slate-100 flex justify-end gap-2">
               <button
                 type="button"
@@ -327,7 +421,7 @@ export const RecurringTasksTab: React.FC = () => {
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl bg-orange-500 text-white font-bold text-xs shadow-sm"
+                className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
               >
                 Create Rule
               </button>
