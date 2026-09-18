@@ -14,9 +14,10 @@ const DAYS_OF_WEEK = [
 ];
 
 export const RecurringTasksTab: React.FC = () => {
-  const { recurringTasks, activeClientId, activeClient, clients, addRecurringTask, toggleRecurringTask } = useApp();
+  const { recurringTasks, activeClientId, activeClient, clients, addRecurringTask, toggleRecurringTask, deleteRecurringTask } = useApp();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [title, setTitle] = useState('');
   const [recurrence, setRecurrence] = useState<RecurrenceRule>('weekly');
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
@@ -78,7 +79,7 @@ export const RecurringTasksTab: React.FC = () => {
 
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="px-4 py-2.5 rounded-full bg-white text-orange-900 font-bold text-xs flex items-center gap-1.5 shadow-md hover:bg-orange-50 transition-all shrink-0"
+          className="px-4 py-2.5 rounded-full bg-white text-orange-900 font-bold text-xs flex items-center gap-1.5 shadow-md hover:bg-orange-50 transition-all shrink-0 cursor-pointer"
         >
           <Plus className="w-4 h-4" /> Create Recurring Rule
         </button>
@@ -120,15 +121,25 @@ export const RecurringTasksTab: React.FC = () => {
                   <p className="text-xs text-slate-500 font-semibold mt-0.5">Auto-populates at: ⏰ {rule.time}</p>
                 </div>
 
-                <button
-                  onClick={() => toggleRecurringTask(rule.id)}
-                  className={`p-2 rounded-2xl transition-all ${
-                    rule.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'
-                  }`}
-                  title={rule.active ? 'Rule Active (Click to disable)' : 'Rule Disabled (Click to activate)'}
-                >
-                  <Power className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => toggleRecurringTask(rule.id)}
+                    className={`p-2 rounded-2xl transition-all cursor-pointer ${
+                      rule.active ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
+                    }`}
+                    title={rule.active ? 'Rule Active (Click to pause)' : 'Rule Paused (Click to activate)'}
+                  >
+                    <Power className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    onClick={() => setDeleteTarget(rule)}
+                    className="p-2 rounded-2xl bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-700 transition-all cursor-pointer"
+                    title="Delete Recurring Task Template"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-semibold text-slate-500">
@@ -139,6 +150,56 @@ export const RecurringTasksTab: React.FC = () => {
           );
         })}
       </div>
+
+      {/* Confirmation Dialog for Delete */}
+      {deleteTarget && (() => {
+        const clientObj = clients.find(c => c.id === deleteTarget.client_id);
+        const clientName = clientObj ? clientObj.name : 'Selected Client';
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+            <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 space-y-4 animate-in zoom-in-95 duration-150">
+              <div className="flex items-center gap-3 text-rose-600 border-b border-slate-100 pb-3">
+                <div className="w-10 h-10 rounded-2xl bg-rose-100 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900">
+                    Delete Recurring Task Template
+                  </h3>
+                  <p className="text-xs font-medium text-slate-500">
+                    This action is permanent
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-700 font-medium leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+                Are you sure you want to permanently delete this recurring task template — <strong className="text-slate-900">"{deleteTarget.title}"</strong> for <strong className="text-slate-900">{clientName}</strong>? This cannot be undone.
+              </p>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    deleteRecurringTask(deleteTarget.id);
+                    setDeleteTarget(null);
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-md shadow-rose-500/20 transition-all cursor-pointer"
+                >
+                  Delete Template
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Add Recurring Rule Modal */}
       {isAddModalOpen && (

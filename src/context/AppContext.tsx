@@ -114,6 +114,7 @@ interface AppContextType {
 
   addRecurringTask: (rec: Omit<RecurringTaskTemplate, 'id' | 'active'>) => void;
   toggleRecurringTask: (recId: string) => void;
+  deleteRecurringTask: (recId: string) => void;
 
   addDailyTaskTemplate: (tpl: Omit<DailyTaskTemplate, 'id' | 'created_at'>) => void;
   updateDailyTaskTemplate: (id: string, updated: Partial<DailyTaskTemplate>) => void;
@@ -937,6 +938,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRecurringTasks(prev => prev.map(r => r.id === recId ? { ...r, active: !r.active } : r));
   };
 
+  const deleteRecurringTask = (recId: string) => {
+    setRecurringTasks(prev => prev.filter(r => r.id !== recId));
+  };
+
   const assignClientsToEmployee = (employeeUsername: string, clientIds: string[]) => {
     const trimmedEmp = employeeUsername.trim();
     setClientAssignments(prev => {
@@ -1700,6 +1705,7 @@ Whether you are embarking on a new adventure or seeking specialized services rel
         updateGoalProgress,
         addRecurringTask,
         toggleRecurringTask,
+        deleteRecurringTask,
         triggerConfetti,
         resetToSeedData
       }}
