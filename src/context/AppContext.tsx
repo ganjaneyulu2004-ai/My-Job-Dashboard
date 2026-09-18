@@ -248,9 +248,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [user, assignedClients, activeClientId]);
 
+  const DUMMY_TEMPLATE_IDS = ['dt-1', 'dt-2', 'dt-3', 'rec-1', 'rec-2'];
+  const FAKE_TASK_TITLES = [
+    'Google Business Review Monitoring & Response',
+    'Instagram DM & Comment Community Engagement',
+    'Daily Ad Campaign Bidding & Keyword Audit',
+    'Daily School Admissions & GMB Offer Post',
+    'Resort Inquiry & WhatsApp Support',
+    'Weekly GMB School Events & Admissions Photo Update',
+    'Weekly Tiger Safari Sightings & Guest Testimonial Post',
+  ];
+
   const [tasks, setTasks] = useState<Task[]>(() => {
     const loaded = getInitialData('tasks', INITIAL_TASKS);
-    return loaded.filter(t => !DUMMY_CLIENT_IDS.includes(t.client_id));
+    return loaded.filter(t => {
+      if (DUMMY_CLIENT_IDS.includes(t.client_id)) return false;
+      if (t.template_id && (DUMMY_TEMPLATE_IDS.includes(t.template_id) || t.template_id.startsWith('dt-') || t.template_id.startsWith('rec-'))) return false;
+      if (FAKE_TASK_TITLES.includes(t.title)) return false;
+      if (t.id && (t.id.includes('task-dt-dt-') || t.id.includes('task-dt-rec-') || DUMMY_TEMPLATE_IDS.some(dt => t.id.includes(dt)))) return false;
+      if (t.tags && (t.tags.includes('DailyTemplate') || t.tags.includes('#DailyTemplate'))) return false;
+      return true;
+    });
   });
   const [workLogs, setWorkLogs] = useState<WorkLog[]>(() => {
     const loaded = getInitialData('workLogs', INITIAL_WORK_LOGS);
@@ -270,11 +288,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [recurringTasks, setRecurringTasks] = useState<RecurringTaskTemplate[]>(() => {
     const loaded = getInitialData('recurringTasks', INITIAL_RECURRING_TASKS);
-    return loaded.filter(r => !DUMMY_CLIENT_IDS.includes(r.client_id));
+    return loaded.filter(r =>
+      !DUMMY_CLIENT_IDS.includes(r.client_id) &&
+      !DUMMY_TEMPLATE_IDS.includes(r.id) &&
+      !r.id.startsWith('rec-') &&
+      !r.id.startsWith('dt-') &&
+      !FAKE_TASK_TITLES.includes(r.title)
+    );
   });
   const [dailyTaskTemplates, setDailyTaskTemplates] = useState<DailyTaskTemplate[]>(() => {
     const loaded = getInitialData('dailyTaskTemplates', INITIAL_DAILY_TASK_TEMPLATES);
-    return loaded.filter(d => !DUMMY_CLIENT_IDS.includes(d.client_id));
+    return loaded.filter(d =>
+      !DUMMY_CLIENT_IDS.includes(d.client_id) &&
+      !DUMMY_TEMPLATE_IDS.includes(d.id) &&
+      !d.id.startsWith('dt-') &&
+      !FAKE_TASK_TITLES.includes(d.title)
+    );
   });
 
   const [blogs, setBlogs] = useState<BlogPost[]>(() => {

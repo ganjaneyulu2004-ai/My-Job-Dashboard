@@ -317,60 +317,10 @@ export const INITIAL_GOALS: Goal[] = [
   }
 ];
 
-export const INITIAL_RECURRING_TASKS: RecurringTaskTemplate[] = [
-  {
-    id: 'rec-1',
-    client_id: 'client-5',
-    title: 'Weekly GMB School Events & Admissions Photo Update',
-    recurrence: 'weekly',
-    work_type: 'GMB Post',
-    tags: ['GMB', 'Weekly'],
-    active: false
-  },
-  {
-    id: 'rec-2',
-    client_id: 'client-6',
-    title: 'Weekly Tiger Safari Sightings & Guest Testimonial Post',
-    recurrence: 'weekly',
-    work_type: 'Social Media',
-    tags: ['Social', 'Safari'],
-    active: false
-  }
-];
+export const INITIAL_RECURRING_TASKS: RecurringTaskTemplate[] = [];
 
 export const INITIAL_INSTAGRAM_ACCOUNTS: InstagramAccount[] = [];
 
-export const INITIAL_DAILY_TASK_TEMPLATES: DailyTaskTemplate[] = [
-  {
-    id: 'dt-1',
-    title: 'Daily School Admissions & GMB Offer Post',
-    assigned_employee: 'Subash',
-    client_id: 'client-5',
-    work_type: 'GMB Post',
-    recurrence: 'daily',
-    active: false,
-    created_at: '2026-09-01'
-  },
-  {
-    id: 'dt-2',
-    title: 'Google Business Review Monitoring & Response',
-    assigned_employee: 'Subash',
-    client_id: 'all',
-    work_type: 'Review Response',
-    recurrence: 'daily',
-    active: false,
-    created_at: '2026-09-01'
-  },
-  {
-    id: 'dt-3',
-    title: 'Resort Inquiry & WhatsApp Support',
-    assigned_employee: 'Subash',
-    client_id: 'client-6',
-    work_type: 'General',
-    recurrence: 'daily',
-    active: false,
-    created_at: '2026-09-01'
-  }
-];
+export const INITIAL_DAILY_TASK_TEMPLATES: DailyTaskTemplate[] = [];
 
 export const INITIAL_CLIENT_ASSIGNMENTS: ClientAssignment[] = [];
