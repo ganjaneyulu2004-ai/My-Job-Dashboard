@@ -12,10 +12,14 @@ import {
   FileText,
   Image as ImageIcon,
   Send,
-  Tag
+  Tag,
+  Bot,
+  RefreshCw,
+  Check
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { BlogPost, BlogImage } from '../../types';
+import { parseKeywordsFromNaturalText, ParsedKeywordsResult } from '../../utils/keywordAiParser';
 
 export const ContentVaultTab: React.FC = () => {
   const { blogs, clients, assignedClients, user, addBlog, publishBlog, deleteBlog } = useApp();
@@ -50,6 +54,143 @@ export const ContentVaultTab: React.FC = () => {
   const [publishedDate, setPublishedDate] = useState(new Date().toISOString().slice(0, 10));
   const [isSubmittingPublish, setIsSubmittingPublish] = useState(false);
 
+  // Natural-Language AI Chat Keyword State
+  interface ChatKeywordMessage {
+    id: string;
+    sender: 'ai' | 'user';
+    text: string;
+    parsedResult?: ParsedKeywordsResult;
+    isConfirmation?: boolean;
+    candidates?: string[];
+  }
+
+  const initialAiPrompt: ChatKeywordMessage = {
+    id: 'msg-init',
+    sender: 'ai',
+    text: "Tell me your keywords — e.g. 'This is my primary keyword: jungle safari maharashtra, and these are secondary: tiger resort booking, wildlife tour package'"
+  };
+
+  const [chatMessages, setChatMessages] = useState<ChatKeywordMessage[]>([initialAiPrompt]);
+  const [chatInputText, setChatInputText] = useState('');
+  const [confirmedKeywords, setConfirmedKeywords] = useState<{ primary: string; secondaries: string[] } | null>(null);
+
+  const handleResetChatKeywords = () => {
+    setChatMessages([initialAiPrompt]);
+    setChatInputText('');
+    setConfirmedKeywords(null);
+  };
+
+  const handleSendKeywordChatMessage = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const clean = chatInputText.trim();
+    if (!clean) return;
+
+    const userMsg: ChatKeywordMessage = {
+      id: `msg-${Date.now()}`,
+      sender: 'user',
+      text: clean
+    };
+
+    const parsed = parseKeywordsFromNaturalText(clean);
+
+    let aiMsg: ChatKeywordMessage;
+    if (parsed.success && parsed.primaryKeyword) {
+      const primary = parsed.primaryKeyword;
+      const secondaries = parsed.secondaryKeywords || [];
+      setConfirmedKeywords({ primary, secondaries });
+
+      const secText = secondaries.length > 0 ? secondaries.join(', ') : 'None';
+      aiMsg = {
+        id: `msg-${Date.now() + 1}`,
+        sender: 'ai',
+        text: `Got it ✅ Primary: ${primary} | Secondary: ${secText}`,
+        isConfirmation: true,
+        parsedResult: parsed
+      };
+    } else if (parsed.needPrimaryClarification && parsed.candidates && parsed.candidates.length > 0) {
+      aiMsg = {
+        id: `msg-${Date.now() + 1}`,
+        sender: 'ai',
+        text: "Which one is the primary keyword?",
+        candidates: parsed.candidates
+      };
+    } else {
+      aiMsg = {
+        id: `msg-${Date.now() + 1}`,
+        sender: 'ai',
+        text: "I couldn't quite extract the primary keyword. Please mention it like: 'Primary: jungle safari, Secondary: resort booking, tour package'"
+      };
+    }
+
+    setChatMessages(prev => [...prev, userMsg, aiMsg]);
+    setChatInputText('');
+  };
+
+  const handleSelectCandidatePill = (selectedPrimary: string, candidates: string[]) => {
+    const secondaries = candidates.filter(c => c.toLowerCase() !== selectedPrimary.toLowerCase());
+    setConfirmedKeywords({ primary: selectedPrimary, secondaries });
+
+    const userMsg: ChatKeywordMessage = {
+      id: `msg-${Date.now()}`,
+      sender: 'user',
+      text: `Primary: ${selectedPrimary}`
+    };
+
+    const secText = secondaries.length > 0 ? secondaries.join(', ') : 'None';
+    const aiMsg: ChatKeywordMessage = {
+      id: `msg-${Date.now() + 1}`,
+      sender: 'ai',
+      text: `Got it ✅ Primary: ${selectedPrimary} | Secondary: ${secText}`,
+      isConfirmation: true
+    };
+
+    setChatMessages(prev => [...prev, userMsg, aiMsg]);
+  };
+
+  const handleConfirmAndSaveDraft = () => {
+    if (!blogContent.trim()) {
+      alert('Please paste the Blog Content before saving.');
+      return;
+    }
+
+    let finalPrimary = confirmedKeywords?.primary;
+    let finalSecondaries = confirmedKeywords?.secondaries || [];
+
+    if (!finalPrimary) {
+      const fallbackMsg = chatInputText.trim() || keywordsInput.trim();
+      if (fallbackMsg) {
+        const parsed = parseKeywordsFromNaturalText(fallbackMsg);
+        if (parsed.success && parsed.primaryKeyword) {
+          finalPrimary = parsed.primaryKeyword;
+          finalSecondaries = parsed.secondaryKeywords || [];
+        }
+      }
+    }
+
+    if (!finalPrimary) {
+      alert('Please enter and confirm your keywords in the AI chat box.');
+      return;
+    }
+
+    addBlog({
+      client_id: selectedClientId,
+      primary_keyword: finalPrimary,
+      secondary_keywords: finalSecondaries,
+      content: blogContent.trim(),
+      images: uploadedImages
+    });
+
+    // Reset Form & Chat
+    setKeywordsInput('');
+    setBlogContent('');
+    setUploadedImages([]);
+    handleResetChatKeywords();
+    setIsAddCardOpen(false);
+
+    setStatusNotice('✅ Draft blog created successfully and synced (Pending) to Google Sheets!');
+    setTimeout(() => setStatusNotice(null), 5000);
+  };
+
   // Handle Image Uploads
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -80,31 +221,7 @@ export const ContentVaultTab: React.FC = () => {
   // Handle Add Blog Submission
   const handleAddBlogSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!keywordsInput.trim() || !blogContent.trim()) return;
-
-    // Parse Keywords: First = Primary, Rest = Secondary
-    const kwList = keywordsInput.split(',').map(k => k.trim()).filter(Boolean);
-    if (kwList.length === 0) return;
-
-    const primaryKeyword = kwList[0];
-    const secondaryKeywords = kwList.slice(1);
-
-    addBlog({
-      client_id: selectedClientId,
-      primary_keyword: primaryKeyword,
-      secondary_keywords: secondaryKeywords,
-      content: blogContent.trim(),
-      images: uploadedImages
-    });
-
-    // Reset Form
-    setKeywordsInput('');
-    setBlogContent('');
-    setUploadedImages([]);
-    setIsAddCardOpen(false);
-
-    setStatusNotice('✅ Draft blog created successfully!');
-    setTimeout(() => setStatusNotice(null), 4000);
+    handleConfirmAndSaveDraft();
   };
 
   // Copy Plain Text Content
@@ -260,24 +377,112 @@ export const ContentVaultTab: React.FC = () => {
               </select>
             </div>
 
-            {/* 2. Keywords input */}
-            <div>
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                Keywords (Comma Separated) <span className="text-rose-500">*</span>
+          </div>
+
+          {/* Chat-style Natural-Language Keyword Input (AI-Parsed) */}
+          <div className="bg-slate-50 border border-purple-100 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Bot className="w-4 h-4 text-purple-600" />
+                <span>AI Keyword Assistant (Natural Language Input)</span>
+                <span className="text-rose-500">*</span>
               </label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. best time tiger safari, monsoon safari timing, winter safari schedule"
-                value={keywordsInput}
-                onChange={(e) => setKeywordsInput(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
-              />
-              <p className="text-[10px] text-slate-400 font-semibold mt-1">
-                📌 Note: First keyword = <strong>Primary Keyword (Title)</strong>. Rest = Secondary Keywords.
-              </p>
+              {confirmedKeywords && (
+                <button
+                  type="button"
+                  onClick={handleResetChatKeywords}
+                  className="text-[11px] font-bold text-purple-600 hover:text-purple-800 flex items-center gap-1"
+                >
+                  <RefreshCw className="w-3 h-3" /> Edit Keywords
+                </button>
+              )}
             </div>
 
+            {/* Chat Messages Log */}
+            <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+              {chatMessages.map(msg => (
+                <div
+                  key={msg.id}
+                  className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
+                >
+                  <div
+                    className={`max-w-[92%] rounded-2xl p-3 text-xs leading-relaxed font-medium ${
+                      msg.sender === 'user'
+                        ? 'bg-purple-600 text-white rounded-br-none shadow-sm font-semibold'
+                        : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none shadow-sm'
+                    }`}
+                  >
+                    <p>{msg.text}</p>
+
+                    {/* Fallback Candidate Selection Pills */}
+                    {msg.candidates && msg.candidates.length > 0 && (
+                      <div className="mt-2.5 flex flex-wrap gap-1.5 pt-2 border-t border-slate-100">
+                        {msg.candidates.map(cand => (
+                          <button
+                            key={cand}
+                            type="button"
+                            onClick={() => handleSelectCandidatePill(cand, msg.candidates!)}
+                            className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 font-extrabold text-xs border border-purple-200 transition-colors shadow-sm active:scale-95 cursor-pointer"
+                          >
+                            📍 {cand}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Chat Input Field */}
+            {!confirmedKeywords ? (
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="text"
+                  placeholder="e.g. 'This is my primary keyword: jungle safari maharashtra, and these are secondary: tiger resort booking, wildlife tour package'"
+                  value={chatInputText}
+                  onChange={(e) => setChatInputText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSendKeywordChatMessage();
+                    }
+                  }}
+                  className="flex-1 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/30"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleSendKeywordChatMessage()}
+                  className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm shrink-0 transition-transform active:scale-95"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Parse</span>
+                </button>
+              </div>
+            ) : (
+              /* Confirmation Echo Box */
+              <div className="p-3 bg-purple-100/70 border border-purple-200 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in duration-200">
+                <div className="text-xs text-purple-900 font-medium">
+                  <span className="font-extrabold text-purple-950">Got it ✅</span> Primary: <strong className="text-purple-700 font-extrabold">{confirmedKeywords.primary}</strong> | Secondary: <span className="font-semibold text-slate-700">{confirmedKeywords.secondaries.length > 0 ? confirmedKeywords.secondaries.join(', ') : 'None'}</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleResetChatKeywords}
+                    className="px-3 py-1.5 rounded-lg bg-white border border-purple-200 text-purple-700 font-bold text-xs hover:bg-purple-50"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmAndSaveDraft}
+                    className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs shadow-md shadow-purple-500/20 flex items-center gap-1"
+                  >
+                    <Check className="w-3.5 h-3.5" /> Confirm & Save Draft
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 3. Blog Content Paste Box */}

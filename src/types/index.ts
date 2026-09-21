@@ -153,6 +153,7 @@ export interface BlogPost {
   live_url?: string;
   published_date?: string;
   created_at: string;
+  sheet_row_id?: string;
 }
 
 export interface TagFilter {

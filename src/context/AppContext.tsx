@@ -1146,9 +1146,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addBlog = (blogData: Omit<BlogPost, 'id' | 'status' | 'created_at'>) => {
+    const sheetRowId = `blog-${Date.now()}`;
     const newBlog: BlogPost = {
       ...blogData,
-      id: `blog-${Date.now()}`,
+      id: sheetRowId,
+      sheet_row_id: sheetRowId,
       status: 'draft',
       created_at: new Date().toISOString().slice(0, 10)
     };
@@ -1165,6 +1167,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
         body: JSON.stringify(newBlog)
       }).catch(err => console.warn('Supabase blogs insert notice:', err));
+
+      // Push new pending row to Google Sheets via Edge function
+      const clientObj = clients.find(c => c.id === blogData.client_id);
+      const edgeUrl = `${supabaseConfig.url.replace(/\/$/, '')}/functions/v1/sync-to-sheets`;
+      fetch(edgeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseConfig.key}`,
+          'apikey': supabaseConfig.key
+        },
+        body: JSON.stringify({
+          action: 'create_blog',
+          sheet_row_id: sheetRowId,
+          date_added: newBlog.created_at,
+          client_id: blogData.client_id,
+          client_name: clientObj ? clientObj.name : blogData.client_id,
+          primary_keyword: blogData.primary_keyword,
+          secondary_keywords: (blogData.secondary_keywords || []).join(', '),
+          status: 'Pending',
+          published_url: '',
+          date_published: ''
+        })
+      }).catch(err => console.warn('Google Sheet create_blog sync notice:', err));
     }
 
     // Auto-create task so it appears in Upcoming Works timeline
@@ -1207,12 +1233,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             'apikey': supabaseConfig.key
           },
           body: JSON.stringify({
+            action: 'update_blog',
+            sheet_row_id: targetBlog.sheet_row_id || targetBlog.id,
             client_id: targetBlog.client_id,
             client_name: clientObj ? clientObj.name : targetBlog.client_id,
             primary_keyword: targetBlog.primary_keyword,
-            secondary_keywords: targetBlog.secondary_keywords.join(', '),
+            secondary_keywords: (targetBlog.secondary_keywords || []).join(', '),
             live_url: liveUrl,
-            published_date: publishedDate
+            published_url: liveUrl,
+            published_date: publishedDate,
+            date_published: publishedDate,
+            status: 'Published'
           })
         });
 
