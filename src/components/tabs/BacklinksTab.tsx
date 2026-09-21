@@ -16,11 +16,14 @@ import {
   FileSpreadsheet,
   AlertTriangle,
   X,
-  Download
+  Download,
+  Code,
+  Eye
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useApp } from '../../context/AppContext';
 import { Backlink } from '../../types';
+import { validateAnchorText, copyArticleToClipboard } from '../../utils/backlinkUtils';
 
 interface ParsedBacklinkRow {
   rowNum: number;
@@ -32,6 +35,7 @@ interface ParsedBacklinkRow {
   anchorText: string;
   status: 'valid' | 'client_not_found' | 'missing_field';
   errorMessage?: string;
+  typoWarning?: string;
 }
 
 export const BacklinksTab: React.FC = () => {
@@ -75,6 +79,10 @@ export const BacklinksTab: React.FC = () => {
   const [liveUrlInputs, setLiveUrlInputs] = useState<Record<string, string>>({});
   const [submittingLiveId, setSubmittingLiveId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [viewModes, setViewModes] = useState<Record<string, 'rich' | 'code'>>({});
+
+  // Anchor text validation
+  const anchorValidation = validateAnchorText(anchorText);
 
   // Filter Backlinks based on active client selector
   let filteredBacklinks = backlinks;
@@ -184,6 +192,8 @@ export const BacklinksTab: React.FC = () => {
             clientAccountRaw.toLowerCase().includes(c.name.toLowerCase())
           );
 
+          const typoCheck = validateAnchorText(anchorTextVal);
+
           if (!matched) {
             parsed.push({
               rowNum: r + 1,
@@ -192,7 +202,8 @@ export const BacklinksTab: React.FC = () => {
               targetPageUrl: targetPageUrlVal,
               anchorText: anchorTextVal,
               status: 'client_not_found',
-              errorMessage: `⚠️ Client not found ("${clientAccountRaw}")`
+              errorMessage: `⚠️ Client not found ("${clientAccountRaw}")`,
+              typoWarning: typoCheck.warningMessage
             });
           } else {
             parsed.push({
@@ -203,7 +214,8 @@ export const BacklinksTab: React.FC = () => {
               websiteName: websiteNameVal,
               targetPageUrl: targetPageUrlVal,
               anchorText: anchorTextVal,
-              status: 'valid'
+              status: 'valid',
+              typoWarning: typoCheck.warningMessage
             });
           }
         }
@@ -250,9 +262,8 @@ export const BacklinksTab: React.FC = () => {
       ['Client Account', 'Website Name', 'Target Page URL', 'Anchor Text'],
       ['EXAMPLE - SmileCare Dental', 'DemoSite.com', 'https://example.com', 'Example Anchor'],
       ['Raos Group Schools', 'EducationNewsToday.org', 'https://raosschools.edu/admissions', 'Top Schools Admissions 2026'],
-      ['Avani Tiger Resorts', 'TravelVibeMagazine.com', 'https://avanitigerresorts.com/safari-packages', 'Tiger Safari Packages'],
-      ['Ved Children Clinic', 'ParentingHealthPortal.com', 'https://vedchildrenclinic.com/pediatrics', 'Pediatric Care Specialists'],
-      ['Unknown NonExistent Clinic', 'HealthBlog.com', 'https://badclient.com', 'Bad Client Link']
+      ['Avani Tiger Resorts', 'TravelVibeMagazine.com', 'https://avanitigerresorts.com/safari-packages', 'first time booking safari'],
+      ['Ved Children Clinic', 'ParentingHealthPortal.com', 'https://vedchildrenclinic.com/pediatrics', 'Pediatric Care Specialists']
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -268,10 +279,10 @@ export const BacklinksTab: React.FC = () => {
     setGeneratingId(null);
   };
 
-  const handleCopyText = (id: string, text: string) => {
-    navigator.clipboard.writeText(text);
+  const handleCopyText = async (id: string, htmlContent: string) => {
+    await copyArticleToClipboard(htmlContent);
     setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+    setTimeout(() => setCopiedId(null), 2500);
   };
 
   const handleSaveLiveUrl = async (id: string) => {
@@ -442,8 +453,27 @@ export const BacklinksTab: React.FC = () => {
                 placeholder="e.g. Pediatric Specialists"
                 value={anchorText}
                 onChange={(e) => setAnchorText(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                className={`w-full bg-slate-50 border rounded-xl p-3 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 ${
+                  anchorValidation.hasWarning ? 'border-amber-300 focus:ring-amber-500/30 bg-amber-50/20' : 'border-slate-200 focus:ring-indigo-500/30'
+                }`}
               />
+              {anchorValidation.hasWarning && (
+                <div className="p-2.5 mt-1.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] font-bold text-amber-900 flex items-center justify-between gap-2 animate-in fade-in duration-150">
+                  <div className="flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>{anchorValidation.warningMessage}</span>
+                  </div>
+                  {anchorValidation.suggestedAnchor && (
+                    <button
+                      type="button"
+                      onClick={() => setAnchorText(anchorValidation.suggestedAnchor!)}
+                      className="px-2.5 py-1 rounded-lg bg-amber-200 hover:bg-amber-300 text-amber-950 font-extrabold text-[10px] transition-colors shrink-0 cursor-pointer shadow-xs"
+                    >
+                      ✨ Auto-Fix Spelling
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
           </div>
@@ -530,7 +560,14 @@ export const BacklinksTab: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 font-bold text-slate-800">{row.websiteName}</td>
                       <td className="px-4 py-3 text-indigo-600 truncate max-w-xs">{row.targetPageUrl}</td>
-                      <td className="px-4 py-3 font-bold text-slate-700">{row.anchorText}</td>
+                      <td className="px-4 py-3 font-bold text-slate-700">
+                        {row.anchorText}
+                        {row.typoWarning && (
+                          <span className="block text-[10px] text-amber-700 font-bold">
+                            {row.typoWarning}
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-right">
                         {row.status === 'valid' ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
@@ -600,6 +637,7 @@ export const BacklinksTab: React.FC = () => {
               const clientObj = clients.find(c => c.id === item.client_id);
               const isLive = item.status === 'live';
               const currentLiveInput = liveUrlInputs[item.id] !== undefined ? liveUrlInputs[item.id] : (item.live_url || '');
+              const viewMode = viewModes[item.id] || 'rich';
 
               return (
                 <div
@@ -693,10 +731,34 @@ export const BacklinksTab: React.FC = () => {
 
                     {item.blog_content ? (
                       <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-3 relative group">
-                        <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
-                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                            Generated 400-600 Word SEO Article (with link to target page)
-                          </span>
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/60 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                              SEO Guest Post Article (Single Hyperlink + Structured Formatting)
+                            </span>
+
+                            {/* Mode toggle */}
+                            <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200">
+                              <button
+                                type="button"
+                                onClick={() => setViewModes(prev => ({ ...prev, [item.id]: 'rich' }))}
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1 ${
+                                  viewMode === 'rich' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                              >
+                                <Eye className="w-3 h-3" /> Formatted
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setViewModes(prev => ({ ...prev, [item.id]: 'code' }))}
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all flex items-center gap-1 ${
+                                  viewMode === 'code' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                                }`}
+                              >
+                                <Code className="w-3 h-3" /> HTML Code
+                              </button>
+                            </div>
+                          </div>
 
                           <button
                             onClick={() => handleCopyText(item.id, item.blog_content!)}
@@ -705,7 +767,7 @@ export const BacklinksTab: React.FC = () => {
                             {copiedId === item.id ? (
                               <>
                                 <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                <span className="text-emerald-600">Copied!</span>
+                                <span className="text-emerald-600">Copied Hyperlink & Formatting!</span>
                               </>
                             ) : (
                               <>
@@ -716,14 +778,21 @@ export const BacklinksTab: React.FC = () => {
                           </button>
                         </div>
 
-                        <div className="text-xs font-normal text-slate-800 leading-relaxed font-mono whitespace-pre-wrap max-h-48 overflow-y-auto p-1 scrollbar-thin">
-                          {item.blog_content}
-                        </div>
+                        {viewMode === 'rich' ? (
+                          <div
+                            className="text-xs text-slate-800 leading-relaxed max-h-64 overflow-y-auto p-4 bg-white rounded-xl border border-slate-200/80 scrollbar-thin space-y-3 [&_h2]:text-base [&_h2]:font-extrabold [&_h2]:text-slate-900 [&_h2]:tracking-tight [&_h3]:text-xs [&_h3]:font-extrabold [&_h3]:text-slate-800 [&_h3]:mt-2 [&_p]:text-xs [&_p]:text-slate-700 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5 [&_li]:text-xs [&_li]:text-slate-700 [&_a]:text-blue-600 [&_a]:font-extrabold [&_a]:underline"
+                            dangerouslySetInnerHTML={{ __html: item.blog_content! }}
+                          />
+                        ) : (
+                          <div className="text-xs font-mono text-slate-800 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto p-4 bg-slate-900 text-slate-100 rounded-xl border border-slate-800 scrollbar-thin">
+                            {item.blog_content}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4 text-center">
                         <p className="text-xs text-slate-400 font-medium">
-                          Click <strong>"Generate Blog Content"</strong> above to auto-write a 400-600 word blog article with the anchor text hyperlink.
+                          Click <strong>"Generate Blog Content"</strong> above to auto-write a structured blog article with the anchor text hyperlink.
                         </p>
                       </div>
                     )}
