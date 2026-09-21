@@ -402,34 +402,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, [backlinks]);
 
-  // Auto-generate today's tasks from Active daily task templates
-  useEffect(() => {
-    const todayStr = new Date().toISOString().slice(0, 10);
+  // Helper function to check if today's date matches a recurring rule's schedule
+  const checkIfScheduleMatchesToday = (rule: RecurrenceRule, days?: string[]): boolean => {
     const todayDate = new Date();
     const todayDayCode = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][todayDate.getDay()];
     const dayOfMonth = todayDate.getDate();
 
-    const activeTemplates = dailyTaskTemplates.filter(t => {
-      if (!t.active) return false;
-      const rule = t.recurrence || 'daily';
+    const r = rule || 'daily';
+    if (r === 'daily') return true;
+    if (r === 'custom') {
+      if (!days || days.length === 0) return false;
+      return days.some(d => d.toLowerCase() === todayDayCode);
+    }
+    if (r === 'weekly') {
+      if (days && days.length > 0) {
+        return days.some(d => d.toLowerCase() === todayDayCode);
+      }
+      return todayDayCode === 'mon';
+    }
+    if (r === 'monthly') {
+      if (days && days.length > 0) {
+        return days.some(d => parseInt(d, 10) === dayOfMonth || d.toLowerCase() === todayDayCode);
+      }
+      return dayOfMonth === 1;
+    }
+    return true;
+  };
 
-      if (rule === 'daily') {
-        return true;
-      }
-      if (rule === 'custom') {
-        if (!t.recurrence_days || t.recurrence_days.length === 0) return false;
-        return t.recurrence_days.some(d => d.toLowerCase() === todayDayCode);
-      }
-      if (rule === 'weekly') {
-        if (t.recurrence_days && t.recurrence_days.length > 0) {
-          return t.recurrence_days.some(d => d.toLowerCase() === todayDayCode);
-        }
-        return todayDayCode === 'mon';
-      }
-      if (rule === 'monthly') {
-        return dayOfMonth === 1;
-      }
-      return true;
+  // Auto-generate today's tasks from Active daily task templates and recurring task rules
+  useEffect(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    const activeTemplates = [
+      ...dailyTaskTemplates.map(t => ({
+        id: t.id,
+        client_id: t.client_id,
+        title: t.title,
+        time: t.time || '09:30 AM',
+        recurrence: t.recurrence,
+        recurrence_days: t.recurrence_days,
+        work_type: t.work_type,
+        active: t.active,
+        tag: 'DailyTemplate',
+        assigned_employee: t.assigned_employee
+      })),
+      ...recurringTasks.map(r => ({
+        id: r.id,
+        client_id: r.client_id,
+        title: r.title,
+        time: r.time || '10:00 AM',
+        recurrence: r.recurrence,
+        recurrence_days: r.recurrence_days,
+        work_type: r.work_type,
+        active: r.active,
+        tag: 'Recurring',
+        assigned_employee: undefined
+      }))
+    ].filter(t => {
+      if (!t.active) return false;
+      return checkIfScheduleMatchesToday(t.recurrence, t.recurrence_days);
     });
 
     setTasks(prevTasks => {
@@ -441,16 +472,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (!exists) {
           created = true;
           tasksToAppend.push({
-            id: `task-dt-${tpl.id}-${todayStr}`,
+            id: `task-${tpl.id}-${todayStr}`,
             client_id: tpl.client_id,
             title: tpl.title,
             date: todayStr,
-            time: tpl.time || '09:30 AM',
+            time: tpl.time,
             status: 'pending',
             is_recurring: true,
             recurrence_rule: tpl.recurrence,
             recurrence_days: tpl.recurrence_days,
-            tags: ['DailyTemplate', tpl.assigned_employee || 'General'],
+            tags: [tpl.tag, tpl.assigned_employee || 'General'],
             work_type: tpl.work_type,
             reminder_enabled: true,
             template_id: tpl.id,
@@ -464,7 +495,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return prevTasks;
     });
-  }, [dailyTaskTemplates]);
+  }, [dailyTaskTemplates, recurringTasks]);
   const [instagramAccounts, setInstagramAccounts] = useState<InstagramAccount[]>(() => getInitialData('instagramAccounts', INITIAL_INSTAGRAM_ACCOUNTS));
   const [instagramConnections, setInstagramConnections] = useState<Record<string, InstagramConnection>>(() => {
     const raw = getInitialData<Record<string, InstagramConnection>>('instagramConnections', {});
@@ -956,12 +987,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addRecurringTask = (recData: Omit<RecurringTaskTemplate, 'id' | 'active'>) => {
+    const newId = `rec-${Date.now()}`;
     const newRec: RecurringTaskTemplate = {
       ...recData,
-      id: `rec-${Date.now()}`,
+      id: newId,
       active: true
     };
     setRecurringTasks(prev => [...prev, newRec]);
+
+    // Check if today matches the schedule; if so, immediately generate today's task instance!
+    if (checkIfScheduleMatchesToday(recData.recurrence, recData.recurrence_days)) {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const newTask: Task = {
+        id: `task-${newId}-${todayStr}`,
+        client_id: recData.client_id,
+        title: recData.title,
+        date: todayStr,
+        time: recData.time || '10:00 AM',
+        status: 'pending',
+        is_recurring: true,
+        recurrence_rule: recData.recurrence,
+        recurrence_days: recData.recurrence_days,
+        tags: ['Recurring', recData.recurrence],
+        work_type: recData.work_type,
+        reminder_enabled: true,
+        template_id: newId
+      };
+
+      setTasks(prev => {
+        const exists = prev.some(t => (t.template_id === newId || t.id === newTask.id) && t.date === todayStr);
+        if (!exists) {
+          return [newTask, ...prev];
+        }
+        return prev;
+      });
+    }
   };
 
   const toggleRecurringTask = (recId: string) => {
