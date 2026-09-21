@@ -221,7 +221,7 @@ export interface InstagramAccount {
   top_post?: InstagramPost;
 }
 
-export type BacklinkStatus = 'pending' | 'live';
+export type BacklinkStatus = 'pending' | 'live' | 'completed';
 
 export interface Backlink {
   id: string;
@@ -234,6 +234,7 @@ export interface Backlink {
   live_url?: string;
   sheet_row_id?: string;
   completed_at?: string;
+  date_live?: string;
   date_added: string; // YYYY-MM-DD
   created_at: string; // ISO string
 }

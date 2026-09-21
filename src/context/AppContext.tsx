@@ -1536,8 +1536,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const todayStr = nowIso.slice(0, 10);
     const rowIdToMatch = target.sheet_row_id || target.id;
 
-    // 1. Update backlink status to Live
-    setBacklinks(prev => prev.map(b => b.id === id ? { ...b, status: 'live', live_url: trimmedUrl, completed_at: nowIso } : b));
+    // 1. Update backlink status to completed
+    setBacklinks(prev => prev.map(b => b.id === id ? {
+      ...b,
+      status: 'completed',
+      live_url: trimmedUrl,
+      date_live: todayStr,
+      completed_at: nowIso
+    } : b));
 
     // 2. Automatically mark corresponding task in Today's Work Deck as done
     setTasks(prev => prev.map(t => {
@@ -1551,7 +1557,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (supabaseConfig.url && supabaseConfig.key) {
       const clientObj = clients.find(c => c.id === target.client_id);
       const edgeUrl = `${supabaseConfig.url.replace(/\/$/, '')}/functions/v1/sync-to-sheets`;
-      
+
       try {
         await fetch(edgeUrl, {
           method: 'POST',
@@ -1569,7 +1575,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             website_name: target.website_name,
             target_page_url: target.target_page_url,
             anchor_text: target.anchor_text,
-            status: 'Live',
+            status: 'Completed',
             live_url: trimmedUrl,
             date_live: todayStr,
             completed_at: nowIso
@@ -1581,7 +1587,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     triggerConfetti();
-    return { success: true, message: 'Backlink marked as Live & synced to Google Sheets!' };
+    return { success: true, message: 'Backlink marked as Completed & synced to Google Sheets!' };
   };
 
   const deleteBacklink = (id: string) => {
