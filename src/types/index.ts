@@ -240,10 +240,24 @@ export interface Backlink {
   created_at: string; // ISO string
 }
 
+export type UpcomingKeywordStatus = 'not_started' | 'used';
+
+export interface UpcomingKeyword {
+  id: string;
+  client_id: string;
+  primary_keyword: string;
+  secondary_keywords: string[];
+  note?: string;
+  status: UpcomingKeywordStatus;
+  used_in_blog_id?: string;
+  created_at: string; // YYYY-MM-DD
+}
+
 export type TabType = 
   | 'overview'
   | 'today'
   | 'content_vault'
+  | 'upcoming_blog_keywords'
   | 'upcoming'
   | 'calendar'
   | 'weekly_report'

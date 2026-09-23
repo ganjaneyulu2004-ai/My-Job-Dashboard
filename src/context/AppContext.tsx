@@ -19,7 +19,8 @@ import {
   BlogPost,
   ScheduledPost,
   SpecialDayContent,
-  Backlink
+  Backlink,
+  UpcomingKeyword
 } from '../types';
 import {
   INITIAL_CLIENTS,
@@ -35,7 +36,8 @@ import {
   INITIAL_BLOGS,
   INITIAL_SCHEDULED_POSTS,
   INITIAL_SPECIAL_DAYS,
-  INITIAL_BACKLINKS
+  INITIAL_BACKLINKS,
+  INITIAL_UPCOMING_KEYWORDS
 } from '../data/seedData';
 import { InstagramAccount, InstagramConnection } from '../types';
 import { buildBacklinkArticle } from '../utils/backlinkUtils';
@@ -145,6 +147,12 @@ interface AppContextType {
   generateBacklinkBlogContent: (id: string) => Promise<{ success: boolean; blogContent?: string }>;
   updateBacklinkLiveUrl: (id: string, liveUrl: string) => Promise<{ success: boolean; message?: string }>;
   deleteBacklink: (id: string) => void;
+
+  upcomingKeywords: UpcomingKeyword[];
+  addUpcomingKeyword: (data: Omit<UpcomingKeyword, 'id' | 'status' | 'created_at'>) => void;
+  updateUpcomingKeyword: (id: string, updated: Partial<UpcomingKeyword>) => void;
+  deleteUpcomingKeyword: (id: string) => void;
+  markUpcomingKeywordAsUsed: (id: string, blogId?: string) => void;
 
   getTodayTasks: (targetClientId?: string) => Task[];
 
@@ -327,6 +335,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return loaded.filter(bl => !DUMMY_CLIENT_IDS.includes(bl.client_id));
   });
 
+  const [upcomingKeywords, setUpcomingKeywords] = useState<UpcomingKeyword[]>(() => {
+    const loaded = getInitialData('upcomingKeywords', INITIAL_UPCOMING_KEYWORDS);
+    return loaded.filter(uk => !DUMMY_CLIENT_IDS.includes(uk.client_id));
+  });
+
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_dailyTaskTemplates`, JSON.stringify(dailyTaskTemplates));
   }, [dailyTaskTemplates]);
@@ -346,6 +359,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_backlinks`, JSON.stringify(backlinks));
   }, [backlinks]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_upcomingKeywords`, JSON.stringify(upcomingKeywords));
+  }, [upcomingKeywords]);
 
   // Auto-sync pending backlinks into tasks deck
   useEffect(() => {
@@ -1686,6 +1703,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTasks(prev => prev.filter(t => t.backlink_id !== id && t.id !== `task-bl-${id}`));
   };
 
+  const addUpcomingKeyword = (data: Omit<UpcomingKeyword, 'id' | 'status' | 'created_at'>) => {
+    const newKw: UpcomingKeyword = {
+      ...data,
+      id: `uk-${Date.now()}`,
+      status: 'not_started',
+      created_at: new Date().toISOString().slice(0, 10)
+    };
+    setUpcomingKeywords(prev => [newKw, ...prev]);
+  };
+
+  const updateUpcomingKeyword = (id: string, updated: Partial<UpcomingKeyword>) => {
+    setUpcomingKeywords(prev => prev.map(k => k.id === id ? { ...k, ...updated } : k));
+  };
+
+  const deleteUpcomingKeyword = (id: string) => {
+    setUpcomingKeywords(prev => prev.filter(k => k.id !== id));
+  };
+
+  const markUpcomingKeywordAsUsed = (id: string, blogId?: string) => {
+    setUpcomingKeywords(prev => prev.map(k => k.id === id ? {
+      ...k,
+      status: 'used',
+      used_in_blog_id: blogId
+    } : k));
+  };
+
   const getTodayTasks = React.useCallback((targetClientId: string = activeClientId): Task[] => {
     const todayStr = new Date().toISOString().slice(0, 10);
     const allowedClients = (!user || user.role === 'admin') 
@@ -1762,6 +1805,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         generateBacklinkBlogContent,
         updateBacklinkLiveUrl,
         deleteBacklink,
+        upcomingKeywords,
+        addUpcomingKeyword,
+        updateUpcomingKeyword,
+        deleteUpcomingKeyword,
+        markUpcomingKeywordAsUsed,
         getTodayTasks,
         instagramAccounts,
         instagramConnections,

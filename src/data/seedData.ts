@@ -1,4 +1,16 @@
-import { Client, Task, WorkLog, GmbSeoEntry, Keyword, Goal, RecurringTaskTemplate, DailyTaskTemplate, InstagramAccount, ClientAssignment, BlogPost, ScheduledPost, SpecialDayContent, Backlink } from '../types';
+import { Client, Task, WorkLog, GmbSeoEntry, Keyword, Goal, RecurringTaskTemplate, DailyTaskTemplate, InstagramAccount, ClientAssignment, BlogPost, ScheduledPost, SpecialDayContent, Backlink, UpcomingKeyword } from '../types';
+
+export const INITIAL_UPCOMING_KEYWORDS: UpcomingKeyword[] = [
+  {
+    id: 'uk-1',
+    client_id: 'client-6',
+    primary_keyword: 'monsoon tiger safari packages',
+    secondary_keywords: ['jungle resort deals', 'wildlife tour packages', 'rainy season safari'],
+    note: 'Focus on luxury staycation packages during early monsoon season',
+    status: 'not_started',
+    created_at: new Date().toISOString().slice(0, 10)
+  }
+];
 
 export const INITIAL_BACKLINKS: Backlink[] = [];
 

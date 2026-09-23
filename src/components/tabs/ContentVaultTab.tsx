@@ -15,14 +15,15 @@ import {
   Tag,
   Bot,
   RefreshCw,
-  Check
+  Check,
+  BookmarkPlus
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { BlogPost, BlogImage } from '../../types';
 import { parseKeywordsFromNaturalText, ParsedKeywordsResult } from '../../utils/keywordAiParser';
 
 export const ContentVaultTab: React.FC = () => {
-  const { blogs, clients, assignedClients, user, addBlog, publishBlog, deleteBlog } = useApp();
+  const { blogs, clients, assignedClients, user, addBlog, publishBlog, deleteBlog, upcomingKeywords, markUpcomingKeywordAsUsed } = useApp();
 
   const isAdmin = user?.role === 'admin';
   const availableClients = isAdmin ? clients : (assignedClients.length > 0 ? assignedClients : clients);
@@ -73,11 +74,42 @@ export const ContentVaultTab: React.FC = () => {
   const [chatMessages, setChatMessages] = useState<ChatKeywordMessage[]>([initialAiPrompt]);
   const [chatInputText, setChatInputText] = useState('');
   const [confirmedKeywords, setConfirmedKeywords] = useState<{ primary: string; secondaries: string[] } | null>(null);
+  const [selectedUpcomingKeywordId, setSelectedUpcomingKeywordId] = useState<string>('');
+
+  const availableUpcomingKeywords = upcomingKeywords.filter(uk =>
+    uk.status === 'not_started' && (isAdmin || assignedClientIds.includes(uk.client_id))
+  );
+
+  const handleSelectUpcomingKeyword = (upcomingId: string) => {
+    setSelectedUpcomingKeywordId(upcomingId);
+    if (!upcomingId) return;
+
+    const target = upcomingKeywords.find(u => u.id === upcomingId);
+    if (!target) return;
+
+    setSelectedClientId(target.client_id);
+    setConfirmedKeywords({
+      primary: target.primary_keyword,
+      secondaries: target.secondary_keywords
+    });
+
+    const secText = target.secondary_keywords.length > 0 ? target.secondary_keywords.join(', ') : 'None';
+    setChatMessages([
+      initialAiPrompt,
+      {
+        id: `msg-uk-select`,
+        sender: 'ai',
+        text: `Picked from Upcoming Keywords ✅ Primary: ${target.primary_keyword} | Secondary: ${secText}`,
+        isConfirmation: true
+      }
+    ]);
+  };
 
   const handleResetChatKeywords = () => {
     setChatMessages([initialAiPrompt]);
     setChatInputText('');
     setConfirmedKeywords(null);
+    setSelectedUpcomingKeywordId('');
   };
 
   const handleSendKeywordChatMessage = (e?: React.FormEvent) => {
@@ -179,6 +211,10 @@ export const ContentVaultTab: React.FC = () => {
       content: blogContent.trim(),
       images: uploadedImages
     });
+
+    if (selectedUpcomingKeywordId) {
+      markUpcomingKeywordAsUsed(selectedUpcomingKeywordId);
+    }
 
     // Reset Form & Chat
     setKeywordsInput('');
@@ -358,6 +394,36 @@ export const ContentVaultTab: React.FC = () => {
               <X className="w-5 h-5" />
             </button>
           </div>
+
+          {/* Option to load from Upcoming Keywords pre-planning store */}
+          {availableUpcomingKeywords.length > 0 && (
+            <div className="bg-purple-50/70 border border-purple-200 rounded-2xl p-4 space-y-2">
+              <label className="text-[11px] font-bold text-purple-900 uppercase tracking-wider flex items-center gap-1.5">
+                <BookmarkPlus className="w-4 h-4 text-purple-600" />
+                <span>Use from Upcoming Keywords (Optional Pre-Planning Store)</span>
+              </label>
+              <select
+                value={selectedUpcomingKeywordId}
+                onChange={(e) => handleSelectUpcomingKeyword(e.target.value)}
+                className="w-full bg-white border border-purple-200 rounded-xl p-3 text-xs font-bold text-purple-950 focus:outline-none focus:ring-2 focus:ring-purple-500/30 cursor-pointer"
+              >
+                <option value="">-- Select a planned topic to auto-fill keywords --</option>
+                {availableUpcomingKeywords.map(uk => {
+                  const clientObj = clients.find(c => c.id === uk.client_id);
+                  return (
+                    <option key={uk.id} value={uk.id}>
+                      {clientObj ? clientObj.name : uk.client_id}: "{uk.primary_keyword}" {uk.note ? `(${uk.note})` : ''}
+                    </option>
+                  );
+                })}
+              </select>
+              {selectedUpcomingKeywordId && (
+                <p className="text-[11px] text-purple-700 font-semibold flex items-center gap-1">
+                  ✨ Auto-filled keywords from pre-planning store. This item will be marked as <strong>"Used"</strong> upon saving this draft.
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
